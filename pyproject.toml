@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visionAgent"
+version = "0.1.0"
+description = "GUI-based agent powered by LangGraph and MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Base dependencies
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+    "chromadb>=0.4",
+    "sentence-transformers>=2.2",
+    "faiss-cpu>=1.7",
+    "numpy>=1.24",
+    "PyPDF2>=3.0",
+    "python-docx>=1.0",
+    
+    # Phase 2 (VLM & Physical Hands)
+    "pyautogui>=0.9",
+    "pynput>=1.7",
+    "pillow>=10.0",
+    "mss>=9.0",       
+    
+    # LangChain & LangGraph Ecosystem
+    "langchain>=0.1",
+    "langgraph>=0.0.26",
+    "langchain-openai>=0.1",
+    "langchain-community>=0.0.30",
+    "langchain-chroma>=0.1",
+    "langchain-huggingface",
+    
+    # MCP Ecosystem
+    "mcp>=0.1",
+    "langchain-mcp-adapters>=0.1",
+    
+    # Virtual Display
+    "pyvirtualdisplay>=3.0",
+    "xvfbwrapper>=0.2.9",
+    
+    # Web UI & Document Parsing
+    "streamlit>=1.28",
+    "unstructured[all-docs]>=0.10",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "websockify",
+    
+    # Dev tools
+    "pytest>=7.4",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1"
+]
+
+[project.scripts]
+vision-agent = "src.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]

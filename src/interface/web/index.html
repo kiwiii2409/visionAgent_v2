@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Agent Workspace</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="workspace-desk">
+        <div class="app-container">
+            
+            <main class="chat-main">
+                <header class="chat-header">
+                    <h1>Workspace</h1>
+                </header>
+
+                <div class="chat-history" id="chatHistory">
+                    <div class="message system">
+                        <div class="message-content">Hello! Ask a question or assign a task to begin.</div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <select id="modeSelector" class="mode-select">
+                            <option value="question">❓ Question</option>
+                            <option value="task">⚡ Task</option>
+                        </select>
+                        <textarea id="promptInput" placeholder="Type your prompt here..." rows="1"></textarea>
+                        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="settings-sidebar" id="settingsSidebar">
+                
+                <div class="vnc-monitor-container">
+                    <div class="vnc-header">
+                        <span><i class="fas fa-desktop"></i> Agent Vision</span>
+                        <span id="vnc-status" class="status-dot disconnected"></span>
+                    </div>
+                    <div id="vnc-screen">
+                        <div id="vnc-placeholder">Waiting for VNC connection...</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-header">
+                    <h2>Configuration</h2>
+                </div>
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <label for="folderInput">Index New Folder</label>
+                        <div class="input-group">
+                            <input type="text" id="folderInput" placeholder="e.g., ./data/docs">
+                            <button onclick="indexFolder()" id="indexBtn">Index</button>
+                        </div>
+                        <p id="indexStatus" class="status-msg"></p>
+                    </div>
+                    
+                    <div class="setting-group" style="margin-top: 20px;">
+                        <label>Active Agent</label>
+                        <select class="mode-select" style="width: 100%; border: 1px solid var(--border-color); margin-top: 5px; padding: 10px;">
+                            <option>visionAgent_v2 (Default)</option>
+                            <option>GPT-4 Core</option>
+                        </select>
+                    </div>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+    
+    <script src="/static/script.js"></script>
+    
+    <script type="module">
+        import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
+
+        let rfb;
+        const statusDot = document.getElementById('vnc-status');
+        const placeholder = document.getElementById('vnc-placeholder');
+
+        function connectVNC() {
+            const screen = document.getElementById('vnc-screen');
+            // Connect to websockify
+            const url = 'ws://localhost:6080/websockify'; 
+
+            try {
+                rfb = new RFB(screen, url);
+                
+                rfb.scaleViewport = true; 
+                rfb.resizeSession = false;
+
+                rfb.addEventListener("connect", () => {
+                    statusDot.className = "status-dot connected";
+                    placeholder.style.display = "none";
+                });
+
+                rfb.addEventListener("disconnect", () => {
+                    statusDot.className = "status-dot disconnected";
+                    placeholder.style.display = "flex";
+                    placeholder.textContent = "VNC Disconnected. Retrying...";
+                    setTimeout(connectVNC, 5000);
+                });
+
+            } catch (e) {
+                console.error("VNC Connection failed:", e);
+            }
+        }
+
+        // Attempt connection on load
+        connectVNC();
+    </script>
+</body>
+</html>
