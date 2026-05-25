@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     
     chroma_db_path: str = str(PROJECT_ROOT / "data" / "chroma")    
     collection_name: str = "visionAgentDocs"
+
+    # location of summary tree, which contains summaries of all files for the agent to see
+    summary_tree_path: str = str(PROJECT_ROOT / "data" / "summary_tree")    
     
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     chunk_size: int = 512

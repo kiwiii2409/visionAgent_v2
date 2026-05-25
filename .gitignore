@@ -10,6 +10,7 @@ venv/
 ENV/
 
 data/chroma/
+data/summary_tree/
 *.sqlite3
 *.bin
 *.pickle
