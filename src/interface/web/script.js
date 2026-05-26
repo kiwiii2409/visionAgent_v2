@@ -16,12 +16,12 @@ function createMessageBubble(sender) {
 async function sendMessage() {
     const promptInput = document.getElementById('promptInput');
     const text = promptInput.value.trim();
-    const mode = document.getElementById('modeSelector').value;
+    
     if (!text) return;
 
-    // 1. Show User Message
+    // 1. Show User Message (Removed the manual [MODE] prefix)
     const userBubble = createMessageBubble('user');
-    userBubble.textContent = `[${mode.toUpperCase()}] ${text}`;
+    userBubble.textContent = text;
     
     promptInput.value = '';
     promptInput.style.height = 'auto';
@@ -45,12 +45,13 @@ async function sendMessage() {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text, mode: mode })
+            // THE FIX: Only send the prompt! The backend handles the routing now.
+            body: JSON.stringify({ prompt: text }) 
         });
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
-        let buffer = ""; // Buffer to handle split JSON chunks
+        let buffer = "";
 
         while (true) {
             const { done, value } = await reader.read();
@@ -58,9 +59,8 @@ async function sendMessage() {
             
             buffer += decoder.decode(value, { stream: true });
             
-            // Split by newline and process complete JSON strings
             let lines = buffer.split('\n');
-            buffer = lines.pop(); // Keep the last incomplete line in the buffer
+            buffer = lines.pop(); 
 
             for (let line of lines) {
                 if (!line.trim()) continue;
@@ -70,7 +70,8 @@ async function sendMessage() {
                     
                     if (data.type === "init") {
                         const li = document.createElement('li');
-                        li.innerHTML = `<span style="color: var(--primary);">Initializing <b>${data.mode.toUpperCase()}</b> mode...</span>`;
+                        // This will now display the mode chosen by your LLM Router!
+                        li.innerHTML = `<span style="color: var(--primary);">Router selected <b>${data.mode.toUpperCase()}</b> mode...</span>`;
                         thinkingSteps.appendChild(li);
                     } 
                     else if (data.type === "tool") {
@@ -82,15 +83,13 @@ async function sendMessage() {
                         currentToolLi.innerHTML += ` ✅`;
                     } 
                     else if (data.type === "msg") {
-                        // Insert final response and CLOSE the thinking toggle!
-                        responseDiv.textContent = data.content;
+                        responseDiv.innerHTML = marked.parse(data.content);
                         thinkingToggle.removeAttribute('open');
                     } 
                     else if (data.type === "error") {
                         responseDiv.innerHTML += `<br><span style="color: #ef4444;">❌ Error: ${data.content}</span>`;
                     }
                     
-                    // Keep auto-scrolling to bottom
                     document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
 
                 } catch (err) {

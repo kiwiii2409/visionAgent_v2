@@ -6,6 +6,7 @@
     <title>Vision Agent Workspace</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="workspace-desk">
@@ -24,10 +25,6 @@
 
                 <div class="chat-input-area">
                     <div class="input-wrapper">
-                        <select id="modeSelector" class="mode-select">
-                            <option value="question">❓ Question</option>
-                            <option value="task">⚡ Task</option>
-                        </select>
                         <textarea id="promptInput" placeholder="Type your prompt here..." rows="1"></textarea>
                         <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
                     </div>

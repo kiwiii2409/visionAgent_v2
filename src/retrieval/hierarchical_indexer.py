@@ -1,3 +1,10 @@
+"""
+src/retrieval/hierarchical_indexer.py
+
+Role: 
+Indexes documents + creates a tree including summaries for each file => used by agent to select additional files
+"""
+
 import os
 import json
 import hashlib
@@ -7,10 +14,9 @@ from typing import List, Dict, Any
 
 from langchain_community.document_loaders import DirectoryLoader, UnstructuredFileLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_chroma import Chroma
 
-
+from src.agents.template.prompts import get_hindex_summary_prompt
 class HierarchicalIndexer:
     def __init__(self, llm, vector_store: Chroma, summary_tree_path: str,  chunk_size: int = 500, chunk_overlap: int = 128):
         self.llm = llm
@@ -25,11 +31,6 @@ class HierarchicalIndexer:
             chunk_overlap=chunk_overlap,
             add_start_index=True,
             separators=["\n\n", "\n", " ", ""]
-        )
-
-        self.file_summary_prompt = ChatPromptTemplate.from_template(
-            "Summarize the core purpose of this file in 1 short sentence. "
-            "File: {filepath}\n\nContent:\n{content}"
         )
 
     def _insert_into_tree(self, tree: Dict[str, Any], path_tuple: tuple, summary: str):
@@ -72,7 +73,7 @@ class HierarchicalIndexer:
                     summary_result = "Empty File"
                 else:
                     # create summary
-                    file_summarizer = self.file_summary_prompt | self.llm
+                    file_summarizer = get_hindex_summary_prompt() | self.llm
                     summary_response = await file_summarizer.ainvoke({
                         "filepath": str(filepath), 
                         "content": doc.page_content[:1500] 
@@ -104,3 +105,5 @@ class HierarchicalIndexer:
         # save chunks to chroma
         await self.vector_store.aadd_documents(all_chunked_docs)
         print("[Indexer] Chunks saved to Chroma")
+
+

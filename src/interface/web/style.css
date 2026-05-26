@@ -390,9 +390,113 @@ textarea::placeholder {
     border-radius: 4px;
     color: #e4e4e7;
 }
-
+/* --- Agent Response Base --- */
 .agent-response {
-    white-space: pre-wrap; /* Ensures line breaks in the AI's text are respected */
-    line-height: 1.6;
+    line-height: 1.5;
     color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.agent-response > *:first-child {
+    margin-top: 0;
+}
+
+/* Paragraphs */
+.agent-response p {
+    margin-bottom: 14px; /* Slightly tighter */
+}
+.agent-response p:last-child {
+    margin-bottom: 0;
+}
+
+/* Headers */
+.agent-response h1, .agent-response h2, .agent-response h3, 
+.agent-response h4, .agent-response h5, .agent-response h6 {
+    margin-top: 20px;
+    margin-bottom: 8px; /* Tighter connection to the text below it */
+    color: var(--text-main);
+    font-weight: 600;
+    line-height: 1.3;
+}
+/* Lists */
+.agent-response ul, .agent-response ol {
+    margin-top: 8px;
+    margin-bottom: 12px; /* Reduced from 16px */
+    padding-left: 28px;  /* Slightly tightened from 32px */
+}
+
+/* --- THE NUCLEAR FIX FOR MASSIVE GAPS --- */
+.agent-response li {
+    margin-bottom: 4px !important; /* Reduced from 8px to prevent stacking gaps */
+    margin-top: 0 !important;      /* Removed top margin entirely */
+}
+
+/* 1. Strip ALL margins from paragraphs inside lists */
+.agent-response li p {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-block !important; /* Changed from inline to inline-block to preserve line heights without breaking block flows */
+}
+
+/* 2. Destroy invisible empty paragraphs caused by extra LLM line breaks */
+.agent-response p:empty, 
+.agent-response p:has(br:only-child) {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 3. Handle nested lists tightly */
+.agent-response li > ul, 
+.agent-response li > ol {
+    margin-bottom: 0 !important;
+    margin-top: 2px !important; /* Reduced from 4px */
+}
+
+/* Horizontal Rules */
+.agent-response hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 20px 0;
+}
+
+/* Inline Code */
+.agent-response code {
+    background-color: var(--desk-bg);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 0.9em;
+    color: #a5b4fc; 
+}
+
+/* Code Blocks */
+.agent-response pre {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-top: 12px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.agent-response pre code {
+    background-color: transparent;
+    padding: 0;
+    color: var(--text-main);
+    font-size: 0.85rem;
+}
+
+/* Blockquotes */
+.agent-response blockquote {
+    border-left: 4px solid var(--primary);
+    padding-left: 14px;
+    margin: 16px 0;
+    color: var(--text-muted);
+    font-style: italic;
+    background-color: rgba(92, 103, 242, 0.05);
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-radius: 0 4px 4px 0;
 }

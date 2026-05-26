@@ -1,5 +1,7 @@
 """
 src/retrieval/indexer.py
+
+simple indexer, replaced by hierarchical_indexer
 """
 import asyncio
 from pathlib import Path

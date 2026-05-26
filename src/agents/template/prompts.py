@@ -13,21 +13,41 @@ def get_evaluation_prompt() -> ChatPromptTemplate:
     )
 
 def get_file_selection_prompt() -> ChatPromptTemplate:
-    """ requires 'query', 'known_files' and 'dir_contents' as parameter"""
+    """ requires 'query', 'known_files' and 'context' as parameter"""
     return ChatPromptTemplate.from_template(
         "User Query: {query}\n"
-        "Files we already know about: {known_files}\n\n"
-        "Here are the contents of neighboring directories:\n{dir_contents}\n\n"
-        "Based on the query, select up to 3 files from these directories that are MOST likely to contain the missing answers. "
-        "Do not select files we already know about."
+        "Files with currently retrieved snippets: {known_files}\n\n"
+        "Context (including partial code chunks and local directory maps):\n{context}\n\n"
+        "Based on the query and the provided maps, select up to 3 files that are MOST likely to contain the missing answers. "
+        "CRITICAL NOTE: The context only contains small snippets of the 'known_files'. "
+        "If you suspect the missing information is located elsewhere inside one of those exact same files, "
+        "you SHOULD select it here so we can read the entire file. You may also select completely new files from the maps. "
+        "Return absolute paths."
     )
 
 def get_synthesis_prompt() -> ChatPromptTemplate:
     """ requires 'query' and 'context' as parameter"""
-
     return ChatPromptTemplate.from_template(
-        "You are a local filesystem assistant. Answer the query using ONLY the provided local file context. "
+        "You are a local filesystem assistant. Answer the query using ONLY the provided local file context. Keep your answer short and concise, without skipping relevant information"
         "Always cite your sources using the file paths.\n\n"
         "Context:\n{context}\n\n"
+        "Query: {query}"
+    )
+
+def get_hindex_summary_prompt()->ChatPromptTemplate:
+    """requires 'filepath' and 'content'"""
+    return ChatPromptTemplate.from_template(
+            "Summarize the core purpose of this file in 1 short sentence. "
+            "File: {filepath}\n\nContent:\n{content}"
+        )
+
+
+def get_task_routing_prompt() -> ChatPromptTemplate:
+    """ requires 'query' as parameter"""
+    return ChatPromptTemplate.from_template(
+        "You are a highly efficient routing agent for a local desktop automation system.\n"
+        "Your job is to classify the user's query into one of two categories:\n\n"
+        "1. 'question': The user wants to find a file, read code, understand architecture, or search for text. (Requires knowledge retrieval from the filesystem).\n"
+        "2. 'task': The user wants the agent to take physical action, such as clicking, typing, looking at the screen, or opening an application. (Requires system manipulation).\n\n"
         "Query: {query}"
     )

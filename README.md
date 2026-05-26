@@ -6,3 +6,6 @@ How to run:
 5. visit: `http://127.0.0.1:8000/` and type request (e.g. open chrome or ask about context of file in indexed folder)
 
 Currently we're still using the ready-to-use agent by langchain for testing (will be replaced once custom ones have been implemented)
+
+
+

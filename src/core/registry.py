@@ -23,6 +23,8 @@ from src.io.capture import ScreenCapture
 from src.retrieval.indexer import DocumentIndexer
 from src.retrieval.hierarchical_indexer import HierarchicalIndexer
 
+from src.agents.search_graph import SearchGraphBuilder
+
 # tools
 from src.tools.ui_tools import get_ui_tools
 from src.tools.retrieval_tools import get_retrieval_tools
@@ -46,6 +48,7 @@ class ServiceRegistry:
 
         # init screen, must be done before importing pyautogui to set correct display
         self._init_virtual_display()
+
 
         self.llm = ChatOpenAI(
             model=self.settings.llm_model_name,
@@ -85,9 +88,11 @@ class ServiceRegistry:
         self.retrieval_tools = get_retrieval_tools(self.vector_store)
         self.program_tools = get_program_tools()
 
+
         self._initialized = True
 
     async def initialize(self) -> None:
+        """ does the hierarchical indexing, mcp init and agent init"""
         folders_to_index = self._requires_reindexing()
         if folders_to_index:
             await self.document_h_indexer.build_index(folders_to_index)
@@ -96,6 +101,17 @@ class ServiceRegistry:
             print("[Registry] Existing index is up to date. Booting instantly.")
 
         await self._init_mcp()
+
+        mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
+
+        search_builder = SearchGraphBuilder(
+            llm=self.llm,
+            vectorstore=self.vector_store,
+            mcp_tools_dict=mcp_tools_dict,
+            summary_tree_path=self.settings.summary_tree_path
+        )
+
+        self.search_agent = search_builder.build()
 
 
     def _init_virtual_display(self) -> None:
