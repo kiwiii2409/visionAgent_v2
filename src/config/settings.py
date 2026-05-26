@@ -8,10 +8,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(PROJECT_ROOT / '.env'), 
         env_file_encoding='utf-8', 
-        extra='ignore'
+        extra='ignore' # .env takes priority and overwrites values specified in settings.py
     )
 
-    openai_api_key: str = "dummy-key"
+    openai_api_key: str = "dummy-key" # gets overwritten by .env value
     api_base_url: str = "https://api.openai.com/v1"
 
     use_virtual_display: bool = True
@@ -32,6 +32,6 @@ class Settings(BaseSettings):
     chunk_size: int = 512
     chunk_overlap: int = 128
     
-    auto_index_folders: List[str] = [] 
+    auto_index_folders: List[str] = [] # gets overwritten by .env value 
     
     max_iterations: int = 15

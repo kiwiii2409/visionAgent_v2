@@ -3,6 +3,7 @@ src/io/vlm/client.py
 
 Role:
     Interface to the local/ api VLM model, handles image analysis
+    Currently unused
 """
 
 from dotenv import load_dotenv

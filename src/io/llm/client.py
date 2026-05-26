@@ -3,7 +3,7 @@ src/io/llm_client.py
 
 Role:
     Interface to the local/ api LLM model, handles short-term memory summarization
-
+    Currently unused
 """
 
 import os

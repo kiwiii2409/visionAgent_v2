@@ -1,5 +1,8 @@
 """
-src/agents/templates/prompts.py
+src/agents/template/prompts.py
+
+Role: 
+Collects all prompts
 """
 
 from langchain_core.prompts import ChatPromptTemplate

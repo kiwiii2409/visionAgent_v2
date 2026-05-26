@@ -9,13 +9,14 @@ import subprocess
 from pyvirtualdisplay import Display
 from typing import List, Any
 from pathlib import Path
+
 # langchain
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_openai import ChatOpenAI
+
 # mcp
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
 
 from src.config.settings import Settings, PROJECT_ROOT
 from src.io.controller import IOController

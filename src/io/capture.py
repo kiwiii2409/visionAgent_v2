@@ -32,6 +32,7 @@ class ScreenCapture:
         
         return Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
 
+    # unsure whether needed, as agent will automatically fetch a screenshot once a langgraph step is done
     async def stream(self, fps: float = 1.0) -> AsyncIterator[Image.Image]:
         """Screenshots at a regular interval, fps limited by processing speed"""
         interval = 1.0 / fps

@@ -18,7 +18,7 @@ class IOController:
         import pyautogui  
         pyautogui.FAILSAFE = True
 
-
+    # TODO change duration to 0.5. high value useful for testing
     async def move_mouse(self, x: int, y: int, duration: float = 3.5) -> None:
         """Move the mouse cursor to absolute coordinates, top Left being (0,0)"""
         await asyncio.to_thread(pyautogui.moveTo, x, y, duration=duration)

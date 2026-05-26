@@ -1,5 +1,8 @@
 """
 src/agents/templates/schema.py
+
+Role:
+Collects all Schemas and states for langchain
 """
 
 from typing import TypedDict, List, Literal

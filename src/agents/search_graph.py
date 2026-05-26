@@ -1,9 +1,13 @@
 """
+src/agents/search_graph.py
+
+Role:
 separate search graph as search likely wont need vlm input and can rely on hierarchical summaries etc.  and other tools to navigate file system.
 
 Flow:
-Query -> Retrieve Context -> Is Context Sufficient?     -> If No, take retrieved documents as starting point and use hierarchical summaries to iterate through parent/ child folders surrounding retrieved document
-                                                        -> If Yes, use retrieved context to answer query
+Query -> Retrieve Context -> Is Context Sufficient?     
+    -> If No, take retrieved documents as starting point and use hierarchical summaries to iterate through parent/ child folders surrounding retrieved document
+    -> If Yes, use retrieved context to answer query
 """
 
 import os
@@ -44,17 +48,16 @@ class SearchGraphBuilder:
                     if child_str:
                         lines.append(child_str)
                 else:
-                    lines.append(f"{indent}  └── ... (deeper files omitted)") # placeholder for llm
+                    lines.append(f"{indent}  └── ... (deeper files omitted)") # placeholder s.t. llm knows that it continues there
                     
         return "\n".join(lines)
 
     async def initial_retrieval(self, state: SearchState):
-        """Step 1: fetch context"""
+        """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
         docs = await self.vectorstore.asimilarity_search(state["query"], k=3)
         
         context = []
-        
         tree_context = []
         paths = set()
         added_subtrees = set()
@@ -108,7 +111,10 @@ class SearchGraphBuilder:
                         pass
 
                     break
-        context.extend(tree_context)           
+        
+        # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
+        context.extend(tree_context)  
+
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),
@@ -116,7 +122,7 @@ class SearchGraphBuilder:
                 
 
     async def evaluate_context(self, state: SearchState):
-        """Step 2: decide whether we have sufficient information to answer"""
+        """Step 2: Decide whether we have sufficient information to answer"""
         print("[Search Graph] Evaluating Context")
         
         evaluator = get_evaluation_prompt() | self.llm.with_structured_output(EvaluationSchema)
@@ -130,10 +136,11 @@ class SearchGraphBuilder:
         return {"is_sufficient_flag": result.is_sufficient} 
 
     async def explore_additional_files(self, state: SearchState):
-        """Step 3: expand search to neighboring directories and read them """
+        """Step 3: Expand search to neighboring directories and read them """
         print("[Search Graph] Gather additional context")
 
         file_selector = get_file_selection_prompt() | self.llm.with_structured_output(FileSelectionSchema)
+        
         # selects up to 3 relevant files using summaries of surrounding files
         files_response = await file_selector.ainvoke({
             "query": state["query"],
@@ -161,7 +168,7 @@ class SearchGraphBuilder:
 
 
     async def synthesize_answer(self, state: SearchState):
-        """Step 4: generate final answer"""
+        """Step 4: Generate final answer"""
 
         chain = get_synthesis_prompt() | self.llm
         
@@ -173,7 +180,7 @@ class SearchGraphBuilder:
         return {"final_answer": response.content}
 
     def evaluation_router(self, state: dict):
-        """evalutates bool flag from context evaluation"""
+        """Evalutates bool flag from context evaluation"""
         if state.get("is_sufficient_flag"):
             return "synthesize_answer"
         return "explore_additional_files"
