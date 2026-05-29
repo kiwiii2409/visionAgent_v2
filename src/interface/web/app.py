@@ -53,18 +53,17 @@ async def stream_agent_progress(prompt: str):
             "query": prompt,
             "context_blocks": [],
             "known_file_paths": [],
-            "final_answer": ""
+            "final_answer": "",
+            "sources": []
         }
         
         try:
-            # .astream() yields updates every time a node finishes in the graph
             async for event in registry.search_agent.astream(initial_state):
                 for node_name, state_update in event.items():
                     
                     if state_update is None:
                         continue
 
-                    # send UI updates based on which node just ran
                     if node_name == "initial_retrieval":
                         yield json.dumps({"type": "tool", "name": "Retrieving file chunks and maps"}) + "\n"
                         await asyncio.sleep(0.5)
@@ -80,19 +79,20 @@ async def stream_agent_progress(prompt: str):
                     elif node_name == "explore_additional_files":
                         files = state_update.get("known_file_paths", [])
                         if files:
-                            latest_file = files[-1] # show most recent file
+                            latest_file = files[-1] 
                             yield json.dumps({"type": "tool", "name": f"Reading file: {latest_file}"}) + "\n"
                             await asyncio.sleep(0.5)
                             yield json.dumps({"type": "tool_done"}) + "\n"
                             
                     elif node_name == "synthesize_answer":
                         answer = state_update.get("final_answer", "")
+                        sources = state_update.get("sources", [])
                         if answer:
-                            yield json.dumps({"type": "msg", "content": answer}) + "\n"
+                            # Added sources array to payload
+                            yield json.dumps({"type": "msg", "content": answer, "sources": sources}) + "\n"
                             
         except Exception as e:
             yield json.dumps({"type": "error", "content": f"Search Agent Error: {str(e)}"}) + "\n"
-
 
     else:
         # generic agent, switch out for vision agent once done

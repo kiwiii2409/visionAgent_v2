@@ -11,11 +11,11 @@ from langchain_core.tools import tool
 
 def get_retrieval_tools(vector_store: Chroma):
     file_retriever = vector_store.as_retriever(
-        search_kwargs={"k": 3, "filter": {"type": "file"}}
+        search_kwargs={"k": 4, "filter": {"type": "file"}}
     )
 
     memory_retriever = vector_store.as_retriever(
-        search_kwargs={"k": 3, "filter": {"type": "memory"}}
+        search_kwargs={"k": 4, "filter": {"type": "memory"}}
     )
 
     @tool

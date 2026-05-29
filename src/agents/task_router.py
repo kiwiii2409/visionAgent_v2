@@ -16,6 +16,6 @@ async def route_query(query: str, llm) -> str:
     
     result = await router_chain.ainvoke({"query": query})
     
-    print(f"\n[Router] Decision: {result.task_type}")
+    print(f"\n[Router] Decision: {(result.task_type).upper()}")
     
     return result.task_type

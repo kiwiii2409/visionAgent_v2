@@ -17,7 +17,7 @@ from pathlib import Path
 
 from langgraph.graph import StateGraph, START, END
 
-from src.agents.template.schema import SearchState, EvaluationSchema, FileSelectionSchema
+from src.agents.template.schema import SearchState, EvaluationSchema, FileSelectionSchema,FinalAnswerSchema
 from src.agents.template.prompts import get_evaluation_prompt, get_file_selection_prompt, get_synthesis_prompt
 
 
@@ -55,7 +55,7 @@ class SearchGraphBuilder:
     async def initial_retrieval(self, state: SearchState):
         """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
-        docs = await self.vectorstore.asimilarity_search(state["query"], k=3)
+        docs = await self.vectorstore.asimilarity_search(state["query"], k=4)
         
         context = []
         tree_context = []
@@ -77,6 +77,7 @@ class SearchGraphBuilder:
             paths.add(source_str)
 
             context.append(f"> SOURCE: {source_str}\n{doc.page_content}")
+            print(f"[Search Graph] Retrieved source:  {source_str}: {doc.page_content[:100].replace('\n', '\\n')}")            
             for root_str, root_node in summary_tree.items():
                 if source_str.startswith(root_str):
                     try:
@@ -132,7 +133,7 @@ class SearchGraphBuilder:
             "context": "\n\n".join(state["context_blocks"])
         })
         
-        print(f"   >>> Step 2 Context Evaluation: {result.is_sufficient} ({result.reasoning})")
+        print(f"[Search Graph] { 'Sufficient' if result.is_sufficient  else 'Insufficient'} Context : {result.reasoning}")
         return {"is_sufficient_flag": result.is_sufficient} 
 
     async def explore_additional_files(self, state: SearchState):
@@ -160,7 +161,7 @@ class SearchGraphBuilder:
             except Exception as e:
                 new_context.append(f"> ERROR READING {file_path}: {e}")
                 
-        print(f"   >>> Step 3 Addtional Context from: {new_paths}")
+        print(f"[Search Graph] Fetching additional context from: {new_paths}")
         return {
             "context_blocks": state["context_blocks"] + new_context,
             "known_file_paths": state["known_file_paths"] + new_paths
@@ -169,16 +170,18 @@ class SearchGraphBuilder:
 
     async def synthesize_answer(self, state: SearchState):
         """Step 4: Generate final answer"""
+        print(f"[Search Graph] Synthesizing Final Answer")
 
-        chain = get_synthesis_prompt() | self.llm
-        
+        chain = get_synthesis_prompt() | self.llm.with_structured_output(FinalAnswerSchema)        
         response = await chain.ainvoke({
             "query": state["query"],
             "context": "\n\n".join(state["context_blocks"])
         })
-        
-        return {"final_answer": response.content}
-
+        return {
+            "final_answer": response.answer,
+            "sources": response.sources
+        }
+    
     def evaluation_router(self, state: dict):
         """Evalutates bool flag from context evaluation"""
         if state.get("is_sufficient_flag"):

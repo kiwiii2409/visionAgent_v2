@@ -1,4 +1,23 @@
-// Creates a message bubble and returns the DOM element so we can update it in real-time
+// Add event listener for Enter / Shift+Enter handling
+document.addEventListener('DOMContentLoaded', () => {
+    const promptInput = document.getElementById('promptInput');
+    
+    promptInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); 
+            sendMessage();
+        }
+    });
+
+    // Auto-grow the textarea as the user types
+    promptInput.addEventListener('input', function() {
+        // Reset height to auto to recalculate shrinking if user deletes text
+        this.style.height = 'auto';
+        // Set height to the actual scroll height
+        this.style.height = this.scrollHeight + 'px';
+    });
+});
+
 function createMessageBubble(sender) {
     const chatHistory = document.getElementById('chatHistory');
     const msgDiv = document.createElement('div');
@@ -13,24 +32,23 @@ function createMessageBubble(sender) {
     
     return contentDiv;
 }
+
 async function sendMessage() {
     const promptInput = document.getElementById('promptInput');
     const text = promptInput.value.trim();
     
     if (!text) return;
 
-    // 1. Show User Message (Removed the manual [MODE] prefix)
     const userBubble = createMessageBubble('user');
     userBubble.textContent = text;
     
     promptInput.value = '';
     promptInput.style.height = 'auto';
 
-    // 2. Create the System Bubble with the Collapsible "Thinking" Structure
     const systemBubble = createMessageBubble('system');
     systemBubble.innerHTML = `
         <details class="agent-thinking" open>
-            <summary><i class="fas fa-brain"></i> Agent Thinking Process</summary>
+            <summary><i class="fas fa-terminal"></i> Execution Log</summary>
             <ul class="thinking-steps"></ul>
         </details>
         <div class="agent-response"></div>
@@ -45,7 +63,6 @@ async function sendMessage() {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // THE FIX: Only send the prompt! The backend handles the routing now.
             body: JSON.stringify({ prompt: text }) 
         });
 
@@ -70,24 +87,37 @@ async function sendMessage() {
                     
                     if (data.type === "init") {
                         const li = document.createElement('li');
-                        // This will now display the mode chosen by your LLM Router!
-                        li.innerHTML = `<span style="color: var(--primary);">Router selected <b>${data.mode.toUpperCase()}</b> mode...</span>`;
+                        li.innerHTML = `<span style="color: var(--primary);">System routing to <b>${data.mode.toUpperCase()}</b> execution mode.</span>`;
                         thinkingSteps.appendChild(li);
                     } 
                     else if (data.type === "tool") {
                         currentToolLi = document.createElement('li');
-                        currentToolLi.innerHTML = `🛠️ Executing Tool: <code>${data.name}</code>...`;
+                        currentToolLi.innerHTML = `Executing Tool: <code>${data.name}</code>`;
                         thinkingSteps.appendChild(currentToolLi);
                     } 
                     else if (data.type === "tool_done" && currentToolLi) {
-                        currentToolLi.innerHTML += ` ✅`;
+                        currentToolLi.innerHTML += ` (Completed)`;
                     } 
                     else if (data.type === "msg") {
-                        responseDiv.innerHTML = marked.parse(data.content);
+                        let htmlContent = marked.parse(data.content);
+                        
+                        // Render structured sources collapsible if they exist
+                        if (data.sources && data.sources.length > 0) {
+                            let sourcesList = data.sources.map(src => `<li><code>${src}</code></li>`).join('');
+                            htmlContent += `
+                            <details class="agent-sources">
+                                <summary><i class="fas fa-file-alt"></i> Sources</summary>
+                                <ul class="source-steps">
+                                    ${sourcesList}
+                                </ul>
+                            </details>`;
+                        }
+                        
+                        responseDiv.innerHTML = htmlContent;
                         thinkingToggle.removeAttribute('open');
                     } 
                     else if (data.type === "error") {
-                        responseDiv.innerHTML += `<br><span style="color: #ef4444;">❌ Error: ${data.content}</span>`;
+                        responseDiv.innerHTML += `<br><span style="color: #ef4444;">Error: ${data.content}</span>`;
                     }
                     
                     document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
