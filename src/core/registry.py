@@ -9,6 +9,7 @@ import subprocess
 from pyvirtualdisplay import Display
 from typing import List, Any
 from pathlib import Path
+import asyncio
 
 # langchain
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -94,26 +95,46 @@ class ServiceRegistry:
 
     async def initialize(self) -> None:
         """ does the hierarchical indexing, mcp init and agent init"""
-        folders_to_index = self._requires_reindexing()
-        if folders_to_index:
-            await self.document_h_indexer.build_index(folders_to_index)
-            print(f"[Registry] Successfully indexed {len(folders_to_index)} folders")
-        else: 
-            print("[Registry] Existing index is up to date. Booting instantly.")
+
+        if self.settings.auto_index_folders:
+            await self.document_h_indexer.build_index(self.settings.auto_index_folders)
+            print(f"[Registry] Successfully indexed {len(self.settings.auto_index_folders)} folders")
+
+        self.indexing_task = asyncio.create_task(self._background_indexer(interval_minutes=5)) # runs automatic indexing every 5 mins
 
         await self._init_mcp()
 
         mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
 
-        search_builder = SearchGraphBuilder(
+        self.search_builder = SearchGraphBuilder(
             llm=self.llm,
             vectorstore=self.vector_store,
             mcp_tools_dict=mcp_tools_dict,
             summary_tree_path=self.settings.summary_tree_path
         )
 
-        self.search_agent = search_builder.build()
+        self.search_agent = self.search_builder.build()
 
+    async def reload_mcp(self) -> None:
+        """restart the mcp server, used after e.g. new file path was added and the tools need new folder premissions
+         currently only the searchAgents tools are updated!
+        """
+        print("\n[Registry] Restarting MCP server to update tool permissions (currently ONLY searchAgent)")
+        
+        if hasattr(self, 'mcp_client') and self.mcp_client is not None:
+            print("[Registry] Shutting down existing MCP")
+            try:
+                await self.mcp_client.close() 
+            except Exception as e:
+                print(f"[Registry] Note: Error during MCP shutdown: {e}")
+
+        await self._init_mcp()
+        
+        new_mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
+
+        self.search_builder.mcp_tools = new_mcp_tools_dict 
+        
+        print("[Registry] Restarted MCP and updated tools successfully")
 
     def _init_virtual_display(self) -> None:
         if not self.settings.use_virtual_display:
@@ -155,6 +176,17 @@ class ServiceRegistry:
         print(
             f"[Registry] Successfully loaded {len(self.mcp_tools)} MCP tools.")
 
+
+    async def _background_indexer(self,interval_minutes):
+        while True:
+            await asyncio.sleep(interval_minutes * 60)
+            if self.settings.auto_index_folders:
+                try:
+                    await self.document_h_indexer.build_index(self.settings.auto_index_folders)
+                except Exception as e:
+                    print(f"[Registry] Background indexer encountered an error: {e}") 
+
+    
     # async def _index_folders(self) -> None:
     #     sum_files = 0
     #     sum_chunks = 0
@@ -169,17 +201,26 @@ class ServiceRegistry:
     #     print(
     #         f"[Registry] Indexed {sum_chunks} chunks from {sum_files} files.")
 
-    def _requires_reindexing(self) -> List[str]:
-        """simplified check, change to checking hashes later to detect changes and trigger reindexing, returns the paths which need to be reindexed"""
-        map_path = Path(self.settings.summary_tree_path) / "tree.json"
+    # def _requires_reindexing(self) -> List[str]:
+    #     """simplified check, change to checking hashes later to detect changes and trigger reindexing, returns the paths which need to be reindexed"""
+    #     map_path = Path(self.settings.summary_tree_path) / "tree.json"
 
-        if not map_path.exists():
-            return self.settings.auto_index_folders
+    #     if not map_path.exists():
+    #         return self.settings.auto_index_folders
 
-        return []
+    #     return []
 
     async def shutdown(self) -> None:
         print("[Registry] Shutting down")
+
+        if hasattr(self, 'mcp_client') and self.mcp_client is not None:
+            try:
+                await self.mcp_client.close()
+            except Exception:
+                pass
+        
+        if hasattr(self, 'indexing_task'):
+            self.indexing_task.cancel()
 
         if hasattr(self, 'vnc_process'):
             self.vnc_process.terminate()

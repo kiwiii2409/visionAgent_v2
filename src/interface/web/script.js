@@ -131,3 +131,79 @@ async function sendMessage() {
         responseDiv.textContent = "Error: Could not connect to the agent backend.";
     }
 }
+async function indexFolder() {
+    const folderInput = document.getElementById('folderInput');
+    const statusText = document.getElementById('indexStatus');
+    const path = folderInput.value.trim();
+
+    if (!path) return;
+
+    // Clear any text that might have been below the input previously
+    statusText.textContent = "";
+
+    // Save the original states so we can revert back
+    const originalValue = folderInput.value;
+    const originalPlaceholder = folderInput.placeholder;
+
+    // Apply the blue loading state
+    folderInput.value = "";
+    folderInput.placeholder = "Indexing... This might take a moment";
+    folderInput.classList.add('input-loading');
+    folderInput.disabled = true;
+
+    try {
+        const res = await fetch('/api/index', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_path: path })
+        });
+        const data = await res.json();
+
+        // Remove loading state
+        folderInput.classList.remove('input-loading');
+
+        if (res.ok) {
+            // Apply green success state
+            folderInput.placeholder = `Successfully indexed files of ${path}`;
+            folderInput.classList.add('input-success');
+            
+            setTimeout(() => {
+                folderInput.classList.remove('input-success');
+                setTimeout(() => {
+                    folderInput.placeholder = originalPlaceholder;
+                }, 500); 
+            }, 3500);
+
+        } else {
+            // Apply red error state (e.g. invalid path)
+            folderInput.placeholder = `Error: ${data.detail || 'Could not index folder'}`;
+            folderInput.classList.add('input-error');
+            
+            setTimeout(() => {
+                folderInput.classList.remove('input-error');
+                setTimeout(() => {
+                    folderInput.placeholder = originalPlaceholder;
+                    folderInput.value = originalValue; // Restore the typo so the user can fix it
+                }, 500); 
+            }, 4000);
+        }
+    } catch (e) {
+        // Apply red error state for network crashes
+        folderInput.classList.remove('input-loading');
+        folderInput.placeholder = "Network error. Make sure the server is running.";
+        folderInput.classList.add('input-error');
+        
+        setTimeout(() => {
+            folderInput.classList.remove('input-error');
+            setTimeout(() => {
+                folderInput.placeholder = originalPlaceholder;
+                folderInput.value = originalValue;
+            }, 500); 
+        }, 4000);
+    } finally {
+        folderInput.disabled = false;
+    }
+}
+
+// Make it available globally for the inline HTML onclick handler
+window.indexFolder = indexFolder;

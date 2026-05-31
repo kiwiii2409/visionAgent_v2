@@ -115,7 +115,6 @@ class SearchGraphBuilder:
         
         # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
         context.extend(tree_context)  
-
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),

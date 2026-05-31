@@ -23,6 +23,11 @@
 - basic tools for retrieval, ui interaction, opening program (currently not used by searchAgent)
 - simple web interface to communicate with agent
 - hierarchical indexing to allow agent to retrieve additional infromations besides chunks from RAG
+- Automatic indexing of only changes in folders using hashing
+  - avoids whole reindexing on each startup (`_requires_reindexing`)
+  - avoid storing duplicates of the same chunk when reindexing
+
+
 
 ## Missing & Ideas
 #### Website
@@ -30,15 +35,14 @@
   - remove emojis from responses
   - make website pretty
   - agent-thinking-bubble in UI doesn't reliably display all steps
-- Allow user to add folders to index or change settings on Website
+- Allow user to change settings on Website
+  - 
 
 #### Memory & RAG
-- Automatic indexing of only changes in folders using hashing + last-changed date (?)
-  - avoids whole reindexing on each startup (`_requires_reindexing`)
-  - avoid storing duplicates of the same chunk when reindexing
 
 #### Agents
 - Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
+  - maybe switch similarity search to EnsembleRetriever or Maximal Marginal Relevance (MMR) to fan out retrieved documents (sometimes focus on one folder, but info in anot)
 - Memory-features:
   - Shared short-term memory between agents (should we limit that so save tokens?)
   - (maybe, low priority) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
