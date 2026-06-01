@@ -9,9 +9,15 @@ import os
 import json
 import hashlib
 import subprocess
+import logging
 from pyvirtualdisplay import Display
 from typing import List, Any
 from pathlib import Path
+
+# Suppress noisy startup output — must run before HuggingFace imports
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+logging.getLogger("sentence_transformers.SentenceTransformer").setLevel(logging.WARNING)
 
 # langchain
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -68,15 +74,16 @@ class ServiceRegistry:
             max_tokens=1024,
         )
 
-        # vector store — suppress HF warnings and progress bars
-        os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
-        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-        import logging
-        logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-        logging.getLogger("transformers").setLevel(logging.WARNING)
+        # vector store — disable tqdm briefly during model load
+        _tqdm_disabled = os.environ.get("TQDM_DISABLE")
+        os.environ["TQDM_DISABLE"] = "1"
         self.embeddings = HuggingFaceEmbeddings(
             model_name=f"{self.settings.embedding_model}"
         )
+        if _tqdm_disabled is None:
+            del os.environ["TQDM_DISABLE"]
+        else:
+            os.environ["TQDM_DISABLE"] = _tqdm_disabled
         self.vector_store = Chroma(
             collection_name=self.settings.collection_name,
             embedding_function=self.embeddings,
@@ -91,11 +98,11 @@ class ServiceRegistry:
         #     chunk_size=self.settings.chunk_size,
         #     chunk_overlap=self.settings.chunk_overlap
         # )
-        tree_file = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
+        self.tree_file = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
         self.document_h_indexer = HierarchicalIndexer(
             llm=self.llm,
             vector_store=self.vector_store,
-            summary_tree_path=str(tree_file),
+            summary_tree_path=str(self.tree_file),
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap
         )
@@ -128,7 +135,7 @@ class ServiceRegistry:
             llm=self.llm,
             vectorstore=self.vector_store,
             mcp_tools_dict=mcp_tools_dict,
-            summary_tree_path=str(tree_file),
+            summary_tree_path=str(self.tree_file),
             max_iterations=self.settings.max_iterations,
             retrieval_k=self.settings.retrieval_top_k,
         )
