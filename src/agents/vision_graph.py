@@ -73,8 +73,11 @@ class VisionGraphBuilder:
         try:
             response = await self.vlm.ainvoke([msg])
             raw_text = response.content if hasattr(response, "content") else str(response)
+            print(f"[Vision] VLM raw response ({len(raw_text)} chars): {raw_text[:200]}")
         except Exception as e:
+            print(f"[Vision] VLM call failed: {e}")
             return {
+                "action_history": [{"action_type": "done", "params": {}, "reasoning": f"VLM call failed: {e}"}],
                 "done": True,
                 "error": f"VLM call failed: {e}",
                 "step_result": f"VLM error: {e}",
