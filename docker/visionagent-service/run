@@ -1,0 +1,20 @@
+#!/usr/bin/with-contenv bash
+# s6-overlay v3 service: start visionagent FastAPI after X11 desktop is ready
+
+echo "[visionagent] Waiting for DISPLAY=${DISPLAY:-:1}..."
+for i in $(seq 1 30); do
+    if xdpyinfo -display "${DISPLAY:-:1}" >/dev/null 2>&1; then
+        echo "[visionagent] Display ${DISPLAY:-:1} is ready."
+        break
+    fi
+    sleep 1
+done
+
+# Ensure data directories exist
+mkdir -p /app/visionagent/data/chroma /app/visionagent/data/summary_tree
+
+cd /app/visionagent
+exec python3 -m uvicorn src.interface.web.app:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --log-level info

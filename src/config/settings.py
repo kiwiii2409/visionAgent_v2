@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Tuple
 from pathlib import Path
+import os
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -34,6 +35,11 @@ class Settings(BaseSettings):
     # VNC / WebSocket config for the browser-side noVNC viewer
     vnc_websocket_port: int = 6080
     vnc_websocket_path: str = "/websockify"
+
+    # Docker / container mode
+    # When True, the agent uses the container's existing X11 desktop
+    # instead of starting its own Xvfb + x11vnc.
+    docker_mode: bool = False
 
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     chunk_size: int = 512

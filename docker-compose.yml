@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  visionagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: visionagent
+    ports:
+      - "8000:8000"   # visionagent FastAPI + Web UI
+      - "3000:3000"   # webtop KasmVNC desktop viewer
+    volumes:
+      # Code: bind mount for development
+      - ./src:/app/visionagent/src:ro
+      # Data: persisted across container rebuilds
+      - visionagent_data:/app/visionagent/data
+      # Config: Docker-specific env file
+      - ./.env.docker:/app/visionagent/.env:ro
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      # Force X11 (critical: pyautogui needs Xlib, not Wayland)
+      - PIXELFLUX_WAYLAND=false
+      # visionagent Docker mode
+      - DOCKER_MODE=true
+      - USE_VIRTUAL_DISPLAY=false
+      - ENABLE_VNC=false
+      # VNC websocket: webtop's KasmVNC
+      - VNC_WEBSOCKET_PORT=3000
+      - VNC_WEBSOCKET_PATH=/websockify
+    shm_size: "2gb"    # /dev/shm for Firefox
+    restart: unless-stopped
+
+volumes:
+  visionagent_data:
+    driver: local

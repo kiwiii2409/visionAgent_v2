@@ -137,6 +137,9 @@ class ServiceRegistry:
         print("[Registry] Vision agent built")
 
     def _init_virtual_display(self) -> None:
+        if self.settings.docker_mode:
+            print(f"[Registry] Docker mode: using container X11 display at DISPLAY={os.environ.get('DISPLAY', ':1')}")
+            return
         if not self.settings.use_virtual_display:
             return
 
@@ -242,5 +245,6 @@ class ServiceRegistry:
         if hasattr(self, 'wm_process'):
             self.wm_process.terminate()
 
-        if hasattr(self, 'display'):
+        # Only stop the display if we started it (not in Docker mode)
+        if hasattr(self, 'display') and not self.settings.docker_mode:
             self.display.stop()
