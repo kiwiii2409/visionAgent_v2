@@ -68,7 +68,12 @@ class ServiceRegistry:
             max_tokens=1024,
         )
 
-        # vector store
+        # vector store — suppress HF warnings and progress bars
+        os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+        import logging
+        logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+        logging.getLogger("transformers").setLevel(logging.WARNING)
         self.embeddings = HuggingFaceEmbeddings(
             model_name=f"{self.settings.embedding_model}"
         )
@@ -171,7 +176,7 @@ class ServiceRegistry:
                 "-forever",
                 "-quiet",
                 "-cursor", "arrow"
-            ], env=vnc_env)
+            ], env=vnc_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Start a lightweight window manager on the virtual display.
         # Without this the screen stays black and GUI apps fail to render.
