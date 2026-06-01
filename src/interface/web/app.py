@@ -54,7 +54,9 @@ async def stream_agent_progress(prompt: str):
             "context_blocks": [],
             "known_file_paths": [],
             "final_answer": "",
-            "sources": []
+            "sources": [],
+            "iterations": 0,
+            "max_iterations": registry.settings.max_iterations
         }
         
         try:

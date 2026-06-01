@@ -110,7 +110,8 @@ class ServiceRegistry:
             llm=self.llm,
             vectorstore=self.vector_store,
             mcp_tools_dict=mcp_tools_dict,
-            summary_tree_path=self.settings.summary_tree_path
+            summary_tree_path=self.settings.summary_tree_path,
+            max_iterations=self.settings.max_iterations
         )
 
         self.search_agent = search_builder.build()

@@ -91,8 +91,9 @@ class HierarchicalIndexer:
                     summary_result
                 )
 
-                # add summary as metadata to chroma (unsure whether needed)
+                # add summary + type as metadata for Chroma retrieval filters
                 doc.metadata["file_summary"] = summary_result
+                doc.metadata["type"] = "file"
 
             # gather all chunks from all roots
             all_chunked_docs.extend(self.text_splitter.split_documents(raw_docs))

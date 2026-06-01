@@ -131,3 +131,42 @@ async function sendMessage() {
         responseDiv.textContent = "Error: Could not connect to the agent backend.";
     }
 }
+
+async function indexFolder() {
+    const folderInput = document.getElementById('folderInput');
+    const indexBtn = document.getElementById('indexBtn');
+    const statusEl = document.getElementById('indexStatus');
+    const folderPath = folderInput?.value?.trim();
+
+    if (!folderPath) {
+        statusEl.textContent = 'Please enter a folder path.';
+        statusEl.style.color = '#ef4444';
+        return;
+    }
+
+    indexBtn.disabled = true;
+    indexBtn.textContent = 'Indexing...';
+    statusEl.textContent = '';
+
+    try {
+        const resp = await fetch('/api/index', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_path: folderPath })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            statusEl.textContent = data.message || 'Indexing complete.';
+            statusEl.style.color = '#22c55e';
+        } else {
+            statusEl.textContent = data.detail || 'Indexing failed.';
+            statusEl.style.color = '#ef4444';
+        }
+    } catch (e) {
+        statusEl.textContent = 'Network error while indexing.';
+        statusEl.style.color = '#ef4444';
+    } finally {
+        indexBtn.disabled = false;
+        indexBtn.textContent = 'Index';
+    }
+}

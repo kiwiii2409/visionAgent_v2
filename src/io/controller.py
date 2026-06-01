@@ -36,7 +36,7 @@ class IOController:
     async def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
         """Scroll up (positive) or down (negative) at given coordinates"""
         if x is not None and y is not None:
-            await self.mouse_move(x, y, duration=0.1)
+            await self.move_mouse(x, y, duration=0.1)
 
         await asyncio.to_thread(pyautogui.scroll, amount)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         import time
         time.sleep(5)
 
-        await controller.mouse_move(200, 1640, duration=2.0)
+        await controller.move_mouse(200, 1640, duration=2.0)
 
         await controller.click(clicks=1)
 

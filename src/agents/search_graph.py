@@ -22,11 +22,12 @@ from src.agents.template.prompts import get_evaluation_prompt, get_file_selectio
 
 
 class SearchGraphBuilder:
-    def __init__(self, llm, vectorstore, mcp_tools_dict, summary_tree_path: str):
+    def __init__(self, llm, vectorstore, mcp_tools_dict, summary_tree_path: str, max_iterations: int = 3):
         self.llm = llm
         self.vectorstore = vectorstore
         self.mcp_tools = mcp_tools_dict
         self.tree_path = Path(summary_tree_path) / "tree.json"
+        self.max_iterations = max_iterations
 
     
     def _format_subtree_to_md(self, node: dict, indent_level: int = 0, max_depth: int = 2) -> str:
@@ -164,8 +165,9 @@ class SearchGraphBuilder:
                 
         print(f"[Search Graph] Fetching additional context from: {new_paths}")
         return {
-            "context_blocks": state["context_blocks"] + new_context,
-            "known_file_paths": state["known_file_paths"] + new_paths
+                "context_blocks": state["context_blocks"] + new_context,
+                "known_file_paths": state["known_file_paths"] + new_paths,
+                "iterations": state.get("iterations", 0) + 1
         }
 
 
@@ -184,7 +186,13 @@ class SearchGraphBuilder:
         }
     
     def evaluation_router(self, state: dict):
-        """Evalutates bool flag from context evaluation"""
+        """Evaluate context & enforce max exploration iterations."""
+        iterations = state.get("iterations", 0)
+        max_iter = state.get("max_iterations", self.max_iterations)
+
+        if iterations >= max_iter:
+            print(f"[Search Graph] Max iterations ({max_iter}) reached, forcing answer synthesis")
+            return "synthesize_answer"
         if state.get("is_sufficient_flag"):
             return "synthesize_answer"
         return "explore_additional_files"
@@ -205,7 +213,7 @@ class SearchGraphBuilder:
             self.evaluation_router
         )
         
-        workflow.add_edge("explore_additional_files","synthesize_answer")
+        workflow.add_edge("explore_additional_files","evaluate_context")
         workflow.add_edge("synthesize_answer", END)
 
         return workflow.compile()

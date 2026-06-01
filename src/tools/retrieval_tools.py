@@ -10,8 +10,12 @@ from langchain_core.tools import tool
 
 
 def get_retrieval_tools(vector_store: Chroma):
+    # No type filter on file_retriever: the hierarchical indexer currently
+    # stores all docs without a "type" metadata field. Filtering on {"type":"file"}
+    # would silently return zero results. When task_memory writes "type":"memory"
+    # documents, we can re-enable the filter.
     file_retriever = vector_store.as_retriever(
-        search_kwargs={"k": 4, "filter": {"type": "file"}}
+        search_kwargs={"k": 4}
     )
 
     memory_retriever = vector_store.as_retriever(
