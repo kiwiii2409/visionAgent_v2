@@ -77,7 +77,8 @@ class SearchGraphBuilder:
             paths.add(source_str)
 
             context.append(f"> SOURCE: {source_str}\n{doc.page_content}")
-            print(f"[Search Graph] Retrieved source:  {source_str}: {doc.page_content[:100].replace('\n', '\\n')}")            
+            preview = doc.page_content[:100].replace('\n', '\\n')
+            print(f"[Search Graph] Retrieved source:  {source_str}: {preview}")
             for root_str, root_node in summary_tree.items():
                 if source_str.startswith(root_str):
                     try:

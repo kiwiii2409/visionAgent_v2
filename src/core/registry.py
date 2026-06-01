@@ -5,6 +5,7 @@ Role:
     register all servies etc. at a single point and initialize the system
 """
 
+import os
 import subprocess
 from pyvirtualdisplay import Display
 from typing import List, Any
@@ -130,6 +131,10 @@ class ServiceRegistry:
         if getattr(self.settings, 'enable_vnc', False):
             print(
                 f"[Registry] Starting VNC Server on port {self.settings.vnc_port}")
+            # Clear Wayland env vars - x11vnc 0.9.16 refuses to start on Wayland
+            vnc_env = os.environ.copy()
+            vnc_env.pop("WAYLAND_DISPLAY", None)
+            vnc_env.pop("XDG_SESSION_TYPE", None)
             self.vnc_process = subprocess.Popen([
                 "x11vnc",
                 "-display", self.display.new_display_var,
@@ -139,7 +144,7 @@ class ServiceRegistry:
                 "-forever",
                 "-quiet",
                 "-cursor", "arrow"
-            ])
+            ], env=vnc_env)
 
     async def _init_mcp(self) -> None:
         print("[Registry] Starting local MCP server for filesystem")
