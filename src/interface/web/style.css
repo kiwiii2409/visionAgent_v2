@@ -572,3 +572,45 @@ textarea::placeholder {
   border-radius: 4px;
   color: #e4e4e7;
 }
+
+/* Input Success Overlay Animation */
+.input-success {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+    border-color: #22c55e !important;
+    color: #22c55e !important;
+    transition: all 0.5s ease;
+}
+
+.input-success::placeholder {
+    color: #22c55e !important;
+    font-weight: 500;
+    opacity: 1;
+}
+
+/* Input Loading State */
+.input-loading {
+    background-color: rgba(59, 130, 246, 0.1) !important; /* Light blue */
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+    transition: all 0.3s ease;
+}
+
+.input-loading::placeholder {
+    color: #3b82f6 !important;
+    font-weight: 500;
+    opacity: 1;
+}
+
+/* Input Error State */
+.input-error {
+    background-color: rgba(239, 68, 68, 0.1) !important; /* Light red */
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    transition: all 0.3s ease;
+}
+
+.input-error::placeholder {
+    color: #ef4444 !important;
+    font-weight: 500;
+    opacity: 1;
+}

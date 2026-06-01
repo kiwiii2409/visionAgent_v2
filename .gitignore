@@ -12,6 +12,7 @@ ENV/
 
 data/chroma/
 data/summary_tree/
+data/indexing/
 *.sqlite3
 *.bin
 *.pickle

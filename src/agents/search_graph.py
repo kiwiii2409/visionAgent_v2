@@ -57,7 +57,7 @@ class SearchGraphBuilder:
     async def initial_retrieval(self, state: SearchState):
         """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
-        docs = await self.vectorstore.asimilarity_search(state["query"], k=self.retrieval_k)
+        docs = await self.vectorstore.amax_marginal_relevance_search(state["query"], k=self.retrieval_k)
         
         context = []
         tree_context = []
@@ -118,7 +118,6 @@ class SearchGraphBuilder:
         
         # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
         context.extend(tree_context)  
-
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),

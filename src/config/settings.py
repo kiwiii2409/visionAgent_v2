@@ -20,21 +20,22 @@ class Settings(BaseSettings):
     enable_vnc: bool = True
     vnc_port: int = 5900
 
-    vlm_model_name: str = "gpt-5.4-mini-2026-03-17"
+    vlm_model_name: str = "gpt-5.4-mini"
     llm_model_name: str = "gpt-5.4-nano"
     
     chroma_db_path: str = str(PROJECT_ROOT / "data" / "chroma")    
     collection_name: str = "visionAgentDocs"
 
     # location of summary tree, which contains summaries of all files for the agent to see
-    summary_tree_path: str = str(PROJECT_ROOT / "data" / "summary_tree")
-    summary_tree_filename: str = "tree.json"
+    indexing_path: str = str(PROJECT_ROOT / "data" / "indexing")
+    summary_tree_filename: str = "summary_tree.json"
+    file_hashes_filename: str = "file_hashes.json"
 
     retrieval_top_k: int = 4
 
     # VNC / WebSocket config for the browser-side noVNC viewer
     vnc_websocket_port: int = 6080
-    vnc_websocket_path: str = "/websockify"
+    vnc_websocket_path: str = "/"
 
     # Docker / container mode
     # When True, the agent uses the container's existing X11 desktop

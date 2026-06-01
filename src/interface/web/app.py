@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import asyncio
 import os
-
+from pathlib import Path
 # --- Agent Imports ---
 from src.core.registry import ServiceRegistry
 from src.agents.task_router import route_query
@@ -17,10 +17,10 @@ registry = ServiceRegistry()
 # This lifespan manager ensures your VNC/MCP connections start and stop safely with the server
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting up ServiceRegistry...")
+    print("[App] Starting up ServiceRegistry")
     await registry.initialize()
     yield
-    print("Shutting down ServiceRegistry...")
+    print("[App] Shutting down ServiceRegistry...")
     await registry.shutdown()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -166,11 +166,36 @@ async def chat_endpoint(req: ChatRequest):
 
 @app.post("/api/index")
 async def index_endpoint(req: IndexRequest):
-    if not os.path.isdir(req.folder_path):
+    target_path = Path(req.folder_path).resolve()
+
+    if not target_path.is_dir():
         raise HTTPException(status_code=400, detail="Invalid folder path.")
     
-    return {"message": f"Not implemented yet"}
-    # return {"message": f"Successfully routed {req.folder_path} to indexer."}
+    # resolve all tracked folders to check for overlaps
+    current_folders = [Path(p).resolve() for p in registry.settings.auto_index_folders]
+
+    # Case target_path folder is part of other
+    for existing in current_folders:
+        if existing == target_path or existing in target_path.parents:
+            return {"message": f"Path is already covered by indexed parent: {existing}"}
+    
+    folder_to_remove = []
+    # Case target_path folder is parent of any existing folders => remove subfolders
+    for idx, existing in enumerate(current_folders):
+        if target_path in existing.parents:
+            folder_to_remove.append(target_path)
+    
+    for folder in folder_to_remove:
+        registry.settings.auto_index_folders.remove(folder)
+
+    # Case target_path folder doesnt overlap (anymore)
+    registry.settings.auto_index_folders.append(req.folder_path)
+
+    # rebuild tree from scratch => (saves tokens by reusing unchanged sumamreis)
+    await registry.document_h_indexer.build_index(registry.settings.auto_index_folders)    
+    
+    await registry.reload_mcp()
+    return {"message": f"Successfully added '{req.folder_path}' to index queue."}    
 
 if __name__ == "__main__":
     import uvicorn

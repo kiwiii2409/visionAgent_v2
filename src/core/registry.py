@@ -13,6 +13,7 @@ import logging
 from pyvirtualdisplay import Display
 from typing import List, Any
 from pathlib import Path
+import asyncio
 
 # Suppress noisy startup output — must run before HuggingFace imports
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
@@ -98,11 +99,14 @@ class ServiceRegistry:
         #     chunk_size=self.settings.chunk_size,
         #     chunk_overlap=self.settings.chunk_overlap
         # )
-        self.tree_file = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
+        self.summary_tree_path = Path(self.settings.indexing_path) / self.settings.summary_tree_filename
+        self.file_hashes_path = Path(self.settings.indexing_path) / self.settings.file_hashes_filename
+
         self.document_h_indexer = HierarchicalIndexer(
             llm=self.llm,
             vector_store=self.vector_store,
-            summary_tree_path=str(self.tree_file),
+            summary_tree_path=str(self.summary_tree_path),
+            file_hashes_path = str(self.file_hashes_path),
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap
         )
@@ -118,29 +122,27 @@ class ServiceRegistry:
 
     async def initialize(self) -> None:
         """ does the hierarchical indexing, mcp init and agent init"""
-        folders_to_index = self._requires_reindexing()
-        if folders_to_index:
-            await self.document_h_indexer.build_index(folders_to_index)
-            print(f"[Registry] Successfully indexed {len(folders_to_index)} folders")
-            # Save file hashes for future incremental indexing
-            self._save_file_hashes(folders_to_index)
-        else:
-            print("[Registry] Existing index is up to date. Booting instantly.")
+
+        if self.settings.auto_index_folders:
+            await self.document_h_indexer.build_index(self.settings.auto_index_folders)
+            print(f"[Registry] Successfully indexed {len(self.settings.auto_index_folders)} folders")
+
+        self.indexing_task = asyncio.create_task(self._background_indexer(interval_minutes=5)) # runs automatic indexing every 5 mins
 
         await self._init_mcp()
 
         mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
 
-        search_builder = SearchGraphBuilder(
+        self.search_builder = SearchGraphBuilder(
             llm=self.llm,
             vectorstore=self.vector_store,
             mcp_tools_dict=mcp_tools_dict,
-            summary_tree_path=str(self.tree_file),
+            summary_tree_path=str(self.summary_tree_path),
             max_iterations=self.settings.max_iterations,
             retrieval_k=self.settings.retrieval_top_k,
         )
 
-        self.search_agent = search_builder.build()
+        self.search_agent = self.search_builder.build()
 
         # Vision agent: perceive → plan → execute → verify loop
         vision_builder = VisionGraphBuilder(
@@ -151,6 +153,27 @@ class ServiceRegistry:
         )
         self.vision_agent = vision_builder.build()
         print("[Registry] Vision agent built")
+
+    async def reload_mcp(self) -> None:
+        """restart the mcp server, used after e.g. new file path was added and the tools need new folder premissions
+         currently only the searchAgents tools are updated!
+        """
+        print("\n[Registry] Restarting MCP server to update tool permissions (currently ONLY searchAgent)")
+        
+        if hasattr(self, 'mcp_client') and self.mcp_client is not None:
+            print("[Registry] Shutting down existing MCP")
+            try:
+                await self.mcp_client.disconnect() 
+            except Exception as e:
+                print(f"[Registry] Note: Error during MCP shutdown: {e}")
+
+        await self._init_mcp()
+        
+        new_mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
+
+        self.search_builder.mcp_tools = new_mcp_tools_dict 
+        
+        print("[Registry] Restarted MCP and updated tools successfully")
 
     def _init_virtual_display(self) -> None:
         if self.settings.docker_mode:
@@ -229,6 +252,17 @@ class ServiceRegistry:
         print(
             f"[Registry] Successfully loaded {len(self.mcp_tools)} MCP tools.")
 
+
+    async def _background_indexer(self,interval_minutes):
+        while True:
+            await asyncio.sleep(interval_minutes * 60)
+            if self.settings.auto_index_folders:
+                try:
+                    await self.document_h_indexer.build_index(self.settings.auto_index_folders)
+                except Exception as e:
+                    print(f"[Registry] Background indexer encountered an error: {e}") 
+
+    
     # async def _index_folders(self) -> None:
     #     sum_files = 0
     #     sum_chunks = 0
@@ -243,85 +277,27 @@ class ServiceRegistry:
     #     print(
     #         f"[Registry] Indexed {sum_chunks} chunks from {sum_files} files.")
 
-    def _save_file_hashes(self, folders: List[str]) -> None:
-        """Save SHA256 hashes of all indexed files for incremental reindex detection."""
-        hashes = {}
-        for folder in folders:
-            root = Path(folder)
-            if not root.exists():
-                continue
-            for file_path in root.rglob("*"):
-                if file_path.is_file() and not any(
-                    p in file_path.parts for p in (".git", "__pycache__", ".egg-info")
-                ):
-                    try:
-                        hashes[str(file_path)] = hashlib.sha256(file_path.read_bytes()).hexdigest()
-                    except (IOError, PermissionError):
-                        continue
-        hashes_path = Path(self.settings.summary_tree_path) / "file_hashes.json"
-        with open(hashes_path, "w") as f:
-            json.dump(hashes, f)
-        print(f"[Registry] Saved {len(hashes)} file hashes for incremental indexing")
 
-    def _requires_reindexing(self) -> List[str]:
-        """Check which indexed folders have new, changed, or deleted files.
+    # def _requires_reindexing(self) -> List[str]:
+    #     """simplified check, change to checking hashes later to detect changes and trigger reindexing, returns the paths which need to be reindexed"""
+    #     map_path = Path(self.settings.summary_tree_path) / "tree.json"
 
-        Computes SHA256 hashes of all files in auto_index_folders,
-        compares against stored hashes from the last successful index.
-        Returns folders that need re-indexing (or empty list if up to date).
-        """
-        if not self.settings.auto_index_folders:
-            return []
+    #     if not map_path.exists():
+    #         return self.settings.auto_index_folders
 
-        hashes_path = Path(self.settings.summary_tree_path) / "file_hashes.json"
-        tree_path = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
-
-        # First run: no stored state
-        if not tree_path.exists() or not hashes_path.exists():
-            return self.settings.auto_index_folders
-
-        # Load stored hashes
-        try:
-            with open(hashes_path, "r") as f:
-                stored_hashes = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            return self.settings.auto_index_folders
-
-        # Compute current hashes for all files in indexed folders
-        current_hashes = {}
-        for folder in self.settings.auto_index_folders:
-            root = Path(folder)
-            if not root.exists():
-                continue
-            for file_path in root.rglob("*"):
-                if file_path.is_file() and not any(
-                    p in file_path.parts for p in (".git", "__pycache__", ".egg-info")
-                ):
-                    try:
-                        digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
-                        current_hashes[str(file_path)] = digest
-                    except (IOError, PermissionError):
-                        continue
-
-        # Detect changes
-        stored_set = set(stored_hashes.keys())
-        current_set = set(current_hashes.keys())
-
-        new_or_changed = {
-            f for f in current_set
-            if f not in stored_set or current_hashes[f] != stored_hashes[f]
-        }
-        deleted = stored_set - current_set
-
-        if not new_or_changed and not deleted:
-            return []
-
-        print(f"[Registry] Detected {len(new_or_changed)} new/changed files, "
-              f"{len(deleted)} deleted files — reindexing")
-        return self.settings.auto_index_folders
+    #     return []
 
     async def shutdown(self) -> None:
         print("[Registry] Shutting down")
+
+        if hasattr(self, 'mcp_client') and self.mcp_client is not None:
+            try:
+                await self.mcp_client.disconnect()
+            except Exception:
+                pass
+        
+        if hasattr(self, 'indexing_task'):
+            self.indexing_task.cancel()
 
         if hasattr(self, 'vnc_process'):
             self.vnc_process.terminate()
