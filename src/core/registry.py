@@ -147,6 +147,36 @@ class ServiceRegistry:
                 "-cursor", "arrow"
             ], env=vnc_env)
 
+        # Start a lightweight window manager on the virtual display.
+        # Without this the screen stays black and GUI apps fail to render.
+        self._start_window_manager()
+
+    def _start_window_manager(self) -> None:
+        """Launch a lightweight window manager on the virtual display.
+
+        Without a WM the Xvfb screen stays black and GUI apps (Firefox, etc.)
+        cannot render. Tries fluxbox first, then openbox, then gives up.
+        """
+        display_var = os.environ.get("DISPLAY", self.display.new_display_var)
+        wm_candidates = ["fluxbox", "openbox", "icewm", "jwm"]
+
+        for wm in wm_candidates:
+            wm_path = subprocess.run(["which", wm], capture_output=True, text=True)
+            if wm_path.returncode == 0:
+                print(f"[Registry] Starting window manager: {wm} on DISPLAY={display_var}")
+                wm_env = os.environ.copy()
+                wm_env["DISPLAY"] = display_var
+                self.wm_process = subprocess.Popen(
+                    [wm_path.stdout.strip()],
+                    env=wm_env,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                return
+
+        print("[Registry] WARNING: No window manager found (fluxbox/openbox). "
+              "Install with: sudo apt-get install -y fluxbox")
+
     async def _init_mcp(self) -> None:
         print("[Registry] Starting local MCP server for filesystem")
         self.mcp_client = MultiServerMCPClient({
@@ -189,6 +219,9 @@ class ServiceRegistry:
 
         if hasattr(self, 'vnc_process'):
             self.vnc_process.terminate()
+
+        if hasattr(self, 'wm_process'):
+            self.wm_process.terminate()
 
         if hasattr(self, 'display'):
             self.display.stop()
