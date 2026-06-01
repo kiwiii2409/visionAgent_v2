@@ -6,6 +6,8 @@ Role:
 """
 
 import os
+import json
+import hashlib
 import subprocess
 from pyvirtualdisplay import Display
 from typing import List, Any
