@@ -54,39 +54,41 @@ async def stream_agent_progress(prompt: str):
         }
         
         try:
-            async for event in registry.search_agent.astream(initial_state):
-                for node_name, state_update in event.items():
-                    
-                    if state_update is None:
-                        continue
+            async with asyncio.timeout(300):  # 5 min timeout
+                async for event in registry.search_agent.astream(initial_state):
+                    for node_name, state_update in event.items():
 
-                    if node_name == "initial_retrieval":
-                        yield json.dumps({"type": "tool", "name": "Retrieving file chunks and maps"}) + "\n"
-                        await asyncio.sleep(0.5)
-                        yield json.dumps({"type": "tool_done"}) + "\n"
-                        
-                    elif node_name == "evaluate_context":
-                        is_sufficient = state_update.get("is_sufficient_flag")
-                        status = "Context sufficient." if is_sufficient else "Missing info. Expanding search..."
-                        yield json.dumps({"type": "tool", "name": status}) + "\n"
-                        await asyncio.sleep(0.5)
-                        yield json.dumps({"type": "tool_done"}) + "\n"
-                        
-                    elif node_name == "explore_additional_files":
-                        files = state_update.get("known_file_paths", [])
-                        if files:
-                            latest_file = files[-1] 
-                            yield json.dumps({"type": "tool", "name": f"Reading file: {latest_file}"}) + "\n"
+                        if state_update is None:
+                            continue
+
+                        if node_name == "initial_retrieval":
+                            yield json.dumps({"type": "tool", "name": "Retrieving file chunks and maps"}) + "\n"
                             await asyncio.sleep(0.5)
                             yield json.dumps({"type": "tool_done"}) + "\n"
-                            
-                    elif node_name == "synthesize_answer":
-                        answer = state_update.get("final_answer", "")
-                        sources = state_update.get("sources", [])
-                        if answer:
-                            # Added sources array to payload
-                            yield json.dumps({"type": "msg", "content": answer, "sources": sources}) + "\n"
-                            
+
+                        elif node_name == "evaluate_context":
+                            is_sufficient = state_update.get("is_sufficient_flag")
+                            status = "Context sufficient." if is_sufficient else "Missing info. Expanding search..."
+                            yield json.dumps({"type": "tool", "name": status}) + "\n"
+                            await asyncio.sleep(0.5)
+                            yield json.dumps({"type": "tool_done"}) + "\n"
+
+                        elif node_name == "explore_additional_files":
+                            files = state_update.get("known_file_paths", [])
+                            if files:
+                                latest_file = files[-1]
+                                yield json.dumps({"type": "tool", "name": f"Reading file: {latest_file}"}) + "\n"
+                                await asyncio.sleep(0.5)
+                                yield json.dumps({"type": "tool_done"}) + "\n"
+
+                        elif node_name == "synthesize_answer":
+                            answer = state_update.get("final_answer", "")
+                            sources = state_update.get("sources", [])
+                            if answer:
+                                yield json.dumps({"type": "msg", "content": answer, "sources": sources}) + "\n"
+
+        except asyncio.TimeoutError:
+            yield json.dumps({"type": "error", "content": "Search Agent timed out after 5 minutes."}) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "content": f"Search Agent Error: {str(e)}"}) + "\n"
 
@@ -104,35 +106,38 @@ async def stream_agent_progress(prompt: str):
         }
 
         try:
-            async for event in registry.vision_agent.astream(vision_state):
-                for node_name, state_update in event.items():
-                    if state_update is None:
-                        continue
+            async with asyncio.timeout(300):  # 5 min timeout
+                async for event in registry.vision_agent.astream(vision_state):
+                    for node_name, state_update in event.items():
+                        if state_update is None:
+                            continue
 
-                    if node_name == "capture_screen":
-                        yield json.dumps({"type": "tool", "name": "Capturing screen"}) + "\n"
-                        await asyncio.sleep(0.3)
-                        yield json.dumps({"type": "tool_done"}) + "\n"
-
-                    elif node_name == "plan_action":
-                        history = state_update.get("action_history", [])
-                        if history:
-                            last = history[-1]
-                            label = f"Plan: {last['action_type']} — {last.get('reasoning', '')[:60]}"
-                            yield json.dumps({"type": "tool", "name": label}) + "\n"
+                        if node_name == "capture_screen":
+                            yield json.dumps({"type": "tool", "name": "Capturing screen"}) + "\n"
                             await asyncio.sleep(0.3)
                             yield json.dumps({"type": "tool_done"}) + "\n"
 
-                    elif node_name == "execute_action":
-                        step = state_update.get("step_result", "")
-                        done = state_update.get("done", False)
-                        if done:
-                            yield json.dumps({"type": "msg", "content": f"Task complete after {state_update.get('iterations', 0)} steps."}) + "\n"
-                        elif step:
-                            yield json.dumps({"type": "tool", "name": step}) + "\n"
-                            await asyncio.sleep(0.2)
-                            yield json.dumps({"type": "tool_done"}) + "\n"
+                        elif node_name == "plan_action":
+                            history = state_update.get("action_history", [])
+                            if history:
+                                last = history[-1]
+                                label = f"Plan: {last['action_type']} — {last.get('reasoning', '')[:60]}"
+                                yield json.dumps({"type": "tool", "name": label}) + "\n"
+                                await asyncio.sleep(0.3)
+                                yield json.dumps({"type": "tool_done"}) + "\n"
 
+                        elif node_name == "execute_action":
+                            step = state_update.get("step_result", "")
+                            done = state_update.get("done", False)
+                            if done:
+                                yield json.dumps({"type": "msg", "content": f"Task complete after {state_update.get('iterations', 0)} steps."}) + "\n"
+                            elif step:
+                                yield json.dumps({"type": "tool", "name": step}) + "\n"
+                                await asyncio.sleep(0.2)
+                                yield json.dumps({"type": "tool_done"}) + "\n"
+
+        except asyncio.TimeoutError:
+            yield json.dumps({"type": "error", "content": "Vision Agent timed out after 5 minutes."}) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "content": f"Vision Agent Error: {str(e)}"}) + "\n"
 

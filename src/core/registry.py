@@ -108,7 +108,9 @@ class ServiceRegistry:
         if folders_to_index:
             await self.document_h_indexer.build_index(folders_to_index)
             print(f"[Registry] Successfully indexed {len(folders_to_index)} folders")
-        else: 
+            # Save file hashes for future incremental indexing
+            self._save_file_hashes(folders_to_index)
+        else:
             print("[Registry] Existing index is up to date. Booting instantly.")
 
         await self._init_mcp()
@@ -227,14 +229,82 @@ class ServiceRegistry:
     #     print(
     #         f"[Registry] Indexed {sum_chunks} chunks from {sum_files} files.")
 
-    def _requires_reindexing(self) -> List[str]:
-        """simplified check, change to checking hashes later to detect changes and trigger reindexing, returns the paths which need to be reindexed"""
-        map_path = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
+    def _save_file_hashes(self, folders: List[str]) -> None:
+        """Save SHA256 hashes of all indexed files for incremental reindex detection."""
+        hashes = {}
+        for folder in folders:
+            root = Path(folder)
+            if not root.exists():
+                continue
+            for file_path in root.rglob("*"):
+                if file_path.is_file() and not any(
+                    p in file_path.parts for p in (".git", "__pycache__", ".egg-info")
+                ):
+                    try:
+                        hashes[str(file_path)] = hashlib.sha256(file_path.read_bytes()).hexdigest()
+                    except (IOError, PermissionError):
+                        continue
+        hashes_path = Path(self.settings.summary_tree_path) / "file_hashes.json"
+        with open(hashes_path, "w") as f:
+            json.dump(hashes, f)
+        print(f"[Registry] Saved {len(hashes)} file hashes for incremental indexing")
 
-        if not map_path.exists():
+    def _requires_reindexing(self) -> List[str]:
+        """Check which indexed folders have new, changed, or deleted files.
+
+        Computes SHA256 hashes of all files in auto_index_folders,
+        compares against stored hashes from the last successful index.
+        Returns folders that need re-indexing (or empty list if up to date).
+        """
+        if not self.settings.auto_index_folders:
+            return []
+
+        hashes_path = Path(self.settings.summary_tree_path) / "file_hashes.json"
+        tree_path = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
+
+        # First run: no stored state
+        if not tree_path.exists() or not hashes_path.exists():
             return self.settings.auto_index_folders
 
-        return []
+        # Load stored hashes
+        try:
+            with open(hashes_path, "r") as f:
+                stored_hashes = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return self.settings.auto_index_folders
+
+        # Compute current hashes for all files in indexed folders
+        current_hashes = {}
+        for folder in self.settings.auto_index_folders:
+            root = Path(folder)
+            if not root.exists():
+                continue
+            for file_path in root.rglob("*"):
+                if file_path.is_file() and not any(
+                    p in file_path.parts for p in (".git", "__pycache__", ".egg-info")
+                ):
+                    try:
+                        digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+                        current_hashes[str(file_path)] = digest
+                    except (IOError, PermissionError):
+                        continue
+
+        # Detect changes
+        stored_set = set(stored_hashes.keys())
+        current_set = set(current_hashes.keys())
+
+        new_or_changed = {
+            f for f in current_set
+            if f not in stored_set or current_hashes[f] != stored_hashes[f]
+        }
+        deleted = stored_set - current_set
+
+        if not new_or_changed and not deleted:
+            return []
+
+        print(f"[Registry] Detected {len(new_or_changed)} new/changed files, "
+              f"{len(deleted)} deleted files — reindexing")
+        return self.settings.auto_index_folders
 
     async def shutdown(self) -> None:
         print("[Registry] Shutting down")
