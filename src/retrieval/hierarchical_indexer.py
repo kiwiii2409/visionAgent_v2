@@ -16,15 +16,23 @@ from langchain_community.document_loaders import DirectoryLoader, UnstructuredFi
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
-from src.agents.template.prompts import get_hindex_summary_prompt
+from langchain_core.prompts import ChatPromptTemplate
+
+# Prompt template for per-file summaries (was in agents/template/prompts.py)
+_HINDEX_SUMMARY_PROMPT = ChatPromptTemplate.from_template(
+    "Summarize the core purpose of this file in 1 short sentence. "
+    "File: {filepath}\n\nContent:\n{content}"
+)
+
+
 class HierarchicalIndexer:
     def __init__(self, llm, vector_store: Chroma, summary_tree_path: str,  chunk_size: int = 500, chunk_overlap: int = 128):
         self.llm = llm
         self.vector_store = vector_store
 
-        # check whether folder exists & set single json to map all folders
-        Path(summary_tree_path).mkdir(parents=True, exist_ok=True)
-        self.summary_tree_path = Path(summary_tree_path) / "tree.json"
+        # summary_tree_path is the full path to the tree JSON file
+        self.summary_tree_path = Path(summary_tree_path)
+        self.summary_tree_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -73,7 +81,7 @@ class HierarchicalIndexer:
                     summary_result = "Empty File"
                 else:
                     # create summary
-                    file_summarizer = get_hindex_summary_prompt() | self.llm
+                    file_summarizer = _HINDEX_SUMMARY_PROMPT | self.llm
                     summary_response = await file_summarizer.ainvoke({
                         "filepath": str(filepath), 
                         "content": doc.page_content[:1500] 

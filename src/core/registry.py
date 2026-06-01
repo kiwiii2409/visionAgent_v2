@@ -22,7 +22,6 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from src.config.settings import Settings, PROJECT_ROOT
 from src.io.controller import IOController
 from src.io.capture import ScreenCapture
-from src.retrieval.indexer import DocumentIndexer
 from src.retrieval.hierarchical_indexer import HierarchicalIndexer
 
 from src.agents.search_graph import SearchGraphBuilder
@@ -85,10 +84,11 @@ class ServiceRegistry:
         #     chunk_size=self.settings.chunk_size,
         #     chunk_overlap=self.settings.chunk_overlap
         # )
+        tree_file = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
         self.document_h_indexer = HierarchicalIndexer(
             llm=self.llm,
             vector_store=self.vector_store,
-            summary_tree_path=self.settings.summary_tree_path,
+            summary_tree_path=str(tree_file),
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap
         )
@@ -119,8 +119,9 @@ class ServiceRegistry:
             llm=self.llm,
             vectorstore=self.vector_store,
             mcp_tools_dict=mcp_tools_dict,
-            summary_tree_path=self.settings.summary_tree_path,
-            max_iterations=self.settings.max_iterations
+            summary_tree_path=str(tree_file),
+            max_iterations=self.settings.max_iterations,
+            retrieval_k=self.settings.retrieval_top_k,
         )
 
         self.search_agent = search_builder.build()
@@ -225,7 +226,7 @@ class ServiceRegistry:
 
     def _requires_reindexing(self) -> List[str]:
         """simplified check, change to checking hashes later to detect changes and trigger reindexing, returns the paths which need to be reindexed"""
-        map_path = Path(self.settings.summary_tree_path) / "tree.json"
+        map_path = Path(self.settings.summary_tree_path) / self.settings.summary_tree_filename
 
         if not map_path.exists():
             return self.settings.auto_index_folders

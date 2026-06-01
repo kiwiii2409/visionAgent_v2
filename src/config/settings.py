@@ -26,8 +26,15 @@ class Settings(BaseSettings):
     collection_name: str = "visionAgentDocs"
 
     # location of summary tree, which contains summaries of all files for the agent to see
-    summary_tree_path: str = str(PROJECT_ROOT / "data" / "summary_tree")    
-    
+    summary_tree_path: str = str(PROJECT_ROOT / "data" / "summary_tree")
+    summary_tree_filename: str = "tree.json"
+
+    retrieval_top_k: int = 4
+
+    # VNC / WebSocket config for the browser-side noVNC viewer
+    vnc_websocket_port: int = 6080
+    vnc_websocket_path: str = "/websockify"
+
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     chunk_size: int = 512
     chunk_overlap: int = 128

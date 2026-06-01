@@ -79,10 +79,12 @@
         const statusDot = document.getElementById('vnc-status');
         const placeholder = document.getElementById('vnc-placeholder');
 
-        function connectVNC() {
+        function connectVNC(config) {
             const screen = document.getElementById('vnc-screen');
-            // Connect to websockify
-            const url = 'ws://localhost:6080/websockify'; 
+            // Build VNC URL from API config + current hostname
+            const cfg = config || { vnc_websocket_port: 6080, vnc_websocket_path: '/websockify' };
+            const url = `ws://${window.location.hostname}:${cfg.vnc_websocket_port}${cfg.vnc_websocket_path}`;
+            console.log('[VNC] Connecting to:', url);
 
             try {
                 rfb = new RFB(screen, url);
@@ -99,7 +101,7 @@
                     statusDot.className = "status-dot disconnected";
                     placeholder.style.display = "flex";
                     placeholder.textContent = "VNC Disconnected. Retrying...";
-                    setTimeout(connectVNC, 5000);
+                    setTimeout(() => connectVNC(config), 5000);
                 });
 
             } catch (e) {
@@ -107,8 +109,17 @@
             }
         }
 
-        // Attempt connection on load
-        connectVNC();
+        // Fetch config from API, then connect
+        (async function initVNC() {
+            try {
+                const resp = await fetch('/api/config');
+                const config = await resp.json();
+                connectVNC(config);
+            } catch (e) {
+                console.warn('Could not fetch /api/config, using defaults:', e);
+                connectVNC();
+            }
+        })();
     </script>
 </body>
 </html>

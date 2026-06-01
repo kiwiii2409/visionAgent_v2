@@ -21,7 +21,7 @@ def get_file_selection_prompt() -> ChatPromptTemplate:
         "User Query: {query}\n"
         "Files with currently retrieved snippets: {known_files}\n\n"
         "Context (including partial code chunks and local directory maps):\n{context}\n\n"
-        "Based on the query and the provided maps, select up to 5 files that are MOST likely to contain the missing answers. "
+        "Based on the query and the provided maps, select up to 3 files that are MOST likely to contain the missing answers. "
         "NOTE: The context only contains small snippets of the 'known_files'. "
         "If you suspect the missing information is located elsewhere inside one of those exact same files, "
         "you SHOULD select it here so we can read the entire file. You may also select completely new files from the maps. "
@@ -39,14 +39,6 @@ def get_synthesis_prompt() -> ChatPromptTemplate:
         "Context:\n{context}\n\n"
         "Query: {query}"
     )
-
-def get_hindex_summary_prompt()->ChatPromptTemplate:
-    """requires 'filepath' and 'content'"""
-    return ChatPromptTemplate.from_template(
-            "Summarize the core purpose of this file in 1 short sentence. "
-            "File: {filepath}\n\nContent:\n{content}"
-        )
-
 
 def get_vision_planning_prompt() -> ChatPromptTemplate:
     """Requires 'goal', 'history_summary', and 'step_result'. Returns prompt for VLM action planning."""

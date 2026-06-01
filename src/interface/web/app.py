@@ -138,6 +138,15 @@ async def stream_agent_progress(prompt: str):
 
 
         
+@app.get("/api/config")
+async def get_config():
+    """Return runtime config for the frontend (VNC URL, etc.)."""
+    return {
+        "vnc_websocket_port": registry.settings.vnc_websocket_port,
+        "vnc_websocket_path": registry.settings.vnc_websocket_path,
+    }
+
+
 @app.get("/")
 async def read_index():
     index_path = os.path.join(BASE_DIR, "index.html")

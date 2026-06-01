@@ -22,12 +22,13 @@ from src.agents.template.prompts import get_evaluation_prompt, get_file_selectio
 
 
 class SearchGraphBuilder:
-    def __init__(self, llm, vectorstore, mcp_tools_dict, summary_tree_path: str, max_iterations: int = 3):
+    def __init__(self, llm, vectorstore, mcp_tools_dict, summary_tree_path: str, max_iterations: int = 3, retrieval_k: int = 4):
         self.llm = llm
         self.vectorstore = vectorstore
         self.mcp_tools = mcp_tools_dict
-        self.tree_path = Path(summary_tree_path) / "tree.json"
+        self.tree_path = Path(summary_tree_path)
         self.max_iterations = max_iterations
+        self.retrieval_k = retrieval_k
 
     
     def _format_subtree_to_md(self, node: dict, indent_level: int = 0, max_depth: int = 2) -> str:
@@ -56,7 +57,7 @@ class SearchGraphBuilder:
     async def initial_retrieval(self, state: SearchState):
         """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
-        docs = await self.vectorstore.asimilarity_search(state["query"], k=4)
+        docs = await self.vectorstore.asimilarity_search(state["query"], k=self.retrieval_k)
         
         context = []
         tree_context = []
