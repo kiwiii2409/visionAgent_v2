@@ -26,6 +26,7 @@ from src.retrieval.indexer import DocumentIndexer
 from src.retrieval.hierarchical_indexer import HierarchicalIndexer
 
 from src.agents.search_graph import SearchGraphBuilder
+from src.agents.vision_graph import VisionGraphBuilder
 
 # tools
 from src.tools.ui_tools import get_ui_tools
@@ -56,6 +57,14 @@ class ServiceRegistry:
             model=self.settings.llm_model_name,
             api_key=self.settings.openai_api_key,
             base_url=self.settings.api_base_url
+        )
+
+        # VLM for vision-based agent (supports image inputs)
+        self.vlm = ChatOpenAI(
+            model=self.settings.vlm_model_name,
+            api_key=self.settings.openai_api_key,
+            base_url=self.settings.api_base_url,
+            max_tokens=1024,
         )
 
         # vector store
@@ -116,6 +125,15 @@ class ServiceRegistry:
 
         self.search_agent = search_builder.build()
 
+        # Vision agent: perceive → plan → execute → verify loop
+        vision_builder = VisionGraphBuilder(
+            vlm=self.vlm,
+            screen_capture=self.screen_capture,
+            io_controller=self.controller,
+            max_iterations=self.settings.max_iterations,
+        )
+        self.vision_agent = vision_builder.build()
+        print("[Registry] Vision agent built")
 
     def _init_virtual_display(self) -> None:
         if not self.settings.use_virtual_display:

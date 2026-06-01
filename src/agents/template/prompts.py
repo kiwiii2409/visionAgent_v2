@@ -48,6 +48,29 @@ def get_hindex_summary_prompt()->ChatPromptTemplate:
         )
 
 
+def get_vision_planning_prompt() -> ChatPromptTemplate:
+    """Requires 'goal', 'history_summary', and 'step_result'. Returns prompt for VLM action planning."""
+    return ChatPromptTemplate.from_template(
+        "You are controlling a Linux desktop (1920x1080). Your goal is: {goal}\n\n"
+        "Recent actions taken:\n{history_summary}\n\n"
+        "Last step result: {step_result}\n\n"
+        "Look at the screenshot and decide the NEXT SINGLE ACTION. "
+        "Think step by step, then output a JSON with these fields:\n"
+        "- thought: brief reasoning about what you see (max 2 sentences)\n"
+        "- done: true only if the goal is FULLY achieved\n"
+        "- action_type: one of [move, click, type, key, launch, wait, done]\n"
+        "- params: dict with action-specific parameters\n"
+        "  move: {{\"x\": int, \"y\": int}}\n"
+        "  click: {{\"button\": \"left\"|\"right\"}}\n"
+        "  type: {{\"text\": str}}\n"
+        "  key: {{\"key\": str}}  (e.g. \"enter\", \"ctrl+c\", \"alt+f4\")\n"
+        "  launch: {{\"command\": str}}  (e.g. \"xterm\", \"nautilus\")\n"
+        "  wait: {{\"seconds\": float}}\n"
+        "  done: {{}}\n\n"
+        "IMPORTANT: Output ONLY the JSON object. No markdown, no extra text."
+    )
+
+
 def get_task_routing_prompt() -> ChatPromptTemplate:
     """ requires 'query' as parameter"""
     return ChatPromptTemplate.from_template(

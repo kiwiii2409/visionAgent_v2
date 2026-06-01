@@ -5,8 +5,9 @@ Role:
 Collects all Schemas and states for langchain
 """
 
-from typing import TypedDict, List, Literal
+from typing import TypedDict, List, Literal, Annotated
 from pydantic import BaseModel, Field
+import operator
 
 class SearchState(TypedDict):
     query: str
@@ -32,3 +33,30 @@ class TaskRoutingSchema(BaseModel):
 class FinalAnswerSchema(BaseModel):
     answer: str = Field(description="The synthesized final answer to the user's query.")
     sources: List[str] = Field(description="List of absolute file paths that were used as sources for this answer.")
+
+
+# --- Vision Agent Schemas ---
+
+class VisionActionSchema(BaseModel):
+    """Structured output from VLM: a single action to take on the desktop."""
+    thought: str = Field(description="Brief reasoning about what you see and why this action is the right next step. Max 2 sentences.")
+    done: bool = Field(description="True only if the user's goal has been fully achieved. False if more actions are needed.")
+    action_type: Literal["move", "click", "type", "key", "launch", "wait", "done"] = Field(
+        description="The type of action to execute: move, click, type, key, launch, wait, or done."
+    )
+    params: dict = Field(
+        default_factory=dict,
+        description="Parameters for the action. move: {x, y}; click: {button}; type: {text}; key: {key}; launch: {command}; wait: {seconds}; done: {}"
+    )
+
+
+class VisionState(TypedDict):
+    """State for the vision-based agent loop."""
+    goal: str
+    screenshot_b64: str | None
+    action_history: Annotated[list, operator.add]  # List[dict], append-only trajectory
+    step_result: str
+    done: bool
+    iterations: int
+    max_iterations: int
+    error: str | None

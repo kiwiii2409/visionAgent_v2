@@ -7,18 +7,12 @@ import asyncio
 import os
 
 # --- Agent Imports ---
-from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.checkpoint.memory import MemorySaver
-
-
 from src.core.registry import ServiceRegistry
 from src.agents.task_router import route_query
 import json
 
 # --- Global Agent Setup ---
 registry = ServiceRegistry()
-memory = MemorySaver()
 
 # This lifespan manager ensures your VNC/MCP connections start and stop safely with the server
 @asynccontextmanager
@@ -97,45 +91,50 @@ async def stream_agent_progress(prompt: str):
             yield json.dumps({"type": "error", "content": f"Search Agent Error: {str(e)}"}) + "\n"
 
     else:
-        # generic agent, switch out for vision agent once done
-        mcp_tools = getattr(registry, 'mcp_tools', [])
-        all_tools = mcp_tools + registry.retrieval_tools + registry.ui_tools + registry.program_tools
-        
-        agent = create_agent(registry.llm, all_tools, checkpointer=memory)
-        thread_config = {"configurable": {"thread_id": "web_ui_session"}}
-
-        state = agent.get_state(thread_config)
-        messages_to_send = []
-
-        if not state.values.get("messages"):
-            sys_msg = (
-                "You are a specialized local desktop automation agent. "
-                "VERY IMPORTANT: You must execute your tools sequentially, ONE AT A TIME. "
-                "Never execute multiple mouse or keyboard tools in parallel. "
-                "Wait for the outcome of one tool before calling the next."
-            )
-            messages_to_send.append(SystemMessage(content=sys_msg))
-
-        messages_to_send.append(HumanMessage(content=prompt))
-        inputs = {"messages": messages_to_send}
+        # Vision agent: perceive → plan → execute → verify loop
+        vision_state = {
+            "goal": prompt,
+            "screenshot_b64": None,
+            "action_history": [],
+            "step_result": "",
+            "done": False,
+            "iterations": 0,
+            "max_iterations": registry.settings.max_iterations,
+            "error": None,
+        }
 
         try:
-            async for chunk in agent.astream(inputs, stream_mode="values", config=thread_config):
-                message = chunk["messages"][-1]
-                
-                if message.type == "ai" and message.tool_calls:
-                    for tool_call in message.tool_calls:
-                        yield json.dumps({"type": "tool", "name": tool_call['name']}) + "\n"
-                    await asyncio.sleep(0.5) 
-                    
-                elif message.type == "tool":
-                    yield json.dumps({"type": "tool_done"}) + "\n"
-                    
-                elif message.type == "ai" and message.content:
-                    yield json.dumps({"type": "msg", "content": message.content}) + "\n"
-                    
+            async for event in registry.vision_agent.astream(vision_state):
+                for node_name, state_update in event.items():
+                    if state_update is None:
+                        continue
+
+                    if node_name == "capture_screen":
+                        yield json.dumps({"type": "tool", "name": "Capturing screen"}) + "\n"
+                        await asyncio.sleep(0.3)
+                        yield json.dumps({"type": "tool_done"}) + "\n"
+
+                    elif node_name == "plan_action":
+                        history = state_update.get("action_history", [])
+                        if history:
+                            last = history[-1]
+                            label = f"Plan: {last['action_type']} — {last.get('reasoning', '')[:60]}"
+                            yield json.dumps({"type": "tool", "name": label}) + "\n"
+                            await asyncio.sleep(0.3)
+                            yield json.dumps({"type": "tool_done"}) + "\n"
+
+                    elif node_name == "execute_action":
+                        step = state_update.get("step_result", "")
+                        done = state_update.get("done", False)
+                        if done:
+                            yield json.dumps({"type": "msg", "content": f"Task complete after {state_update.get('iterations', 0)} steps."}) + "\n"
+                        elif step:
+                            yield json.dumps({"type": "tool", "name": step}) + "\n"
+                            await asyncio.sleep(0.2)
+                            yield json.dumps({"type": "tool_done"}) + "\n"
+
         except Exception as e:
-            yield json.dumps({"type": "error", "content": str(e)}) + "\n"
+            yield json.dumps({"type": "error", "content": f"Vision Agent Error: {str(e)}"}) + "\n"
 
 
         
