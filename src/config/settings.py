@@ -49,3 +49,4 @@ class Settings(BaseSettings):
     auto_index_folders: List[str] = [] # gets overwritten by .env value 
     
     max_iterations: int = 15
+    max_search_iterations: int = 1

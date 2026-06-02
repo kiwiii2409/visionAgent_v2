@@ -1,125 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vision Agent Workspace</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body>
+  </head>
+  <body>
     <div class="workspace-desk">
-        <div class="app-container">
-            
-            <main class="chat-main">
-                <header class="chat-header">
-                    <h1>Local Agent</h1>
-                </header>
+      <div class="app-container">
+        <main class="chat-main">
+          <header class="chat-header">
+            <h1>Local Agent</h1>
+          </header>
 
-                <div class="chat-history" id="chatHistory">
-                    <div class="message system">
-                        <div class="message-content">Ask a question or assign a task to begin.</div>
-                    </div>
-                </div>
+          <div class="chat-history" id="chatHistory">
+            <div class="message system">
+              <div class="message-content">
+                Ask a question or assign a task to begin.
+              </div>
+            </div>
+          </div>
 
-                <div class="chat-input-area">
-                    <div class="input-wrapper">
-                        <textarea id="promptInput" placeholder="Type your prompt here..." rows="1"></textarea>
-                        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-                    </div>
-                </div>
-            </main>
+          <div class="chat-input-area">
+            <div class="input-wrapper">
+              <textarea
+                id="promptInput"
+                placeholder="Type your prompt here..."
+                rows="1"
+              ></textarea>
+              <button id="actionBtn" class="send-btn" onclick="handleAction()">
+                <i id="actionIcon" class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </main>
 
-            <aside class="settings-sidebar" id="settingsSidebar">
-                
-                <div class="vnc-monitor-container">
-                    <div class="vnc-header">
-                        <span><i class="fas fa-desktop"></i> Agent Vision</span>
-                        <span id="vnc-status" class="status-dot disconnected"></span>
-                    </div>
-                    <div id="vnc-screen">
-                        <div id="vnc-placeholder">Waiting for VNC connection...</div>
-                    </div>
-                </div>
+        <aside class="settings-sidebar" id="settingsSidebar">
+          <div class="vnc-monitor-container">
+            <div class="vnc-header">
+              <span><i class="fas fa-desktop"></i> Agent Vision</span>
+              <span id="vnc-status" class="status-dot disconnected"></span>
+            </div>
+            <div id="vnc-screen">
+              <div id="vnc-placeholder">Waiting for VNC connection...</div>
+            </div>
+          </div>
 
-                <div class="sidebar-header">
-                    <h2>Configuration</h2>
-                </div>
-                <div class="settings-content">
-                    <div class="setting-group">
-                        <label for="folderInput">Index New Folder</label>
-                        <div class="input-group">
-                            <input type="text" id="folderInput" placeholder="e.g., ./data/docs">
-                            <button onclick="indexFolder()" id="indexBtn">Index</button>
-                        </div>
-                        <p id="indexStatus" class="status-msg"></p>
-                    </div>
-                    
-                    <div class="setting-group" style="margin-top: 20px;">
-                        <label>Active Agent</label>
-                        <select class="mode-select" style="width: 100%; border: 1px solid var(--border-color); margin-top: 5px; padding: 10px;">
-                            <option>visionAgent_v2 (Default)</option>
-                            <option>Search Agent</option>
+          <div class="sidebar-header">
+            <h2>Configuration</h2>
+          </div>
+          <div class="settings-content">
+            <div class="setting-group">
+              <label for="folderInput">Index New Folder</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  id="folderInput"
+                  placeholder="e.g., ./data/docs"
+                />
+                <button onclick="indexFolder()" id="indexBtn">Index</button>
+              </div>
+              <p id="indexStatus" class="status-msg"></p>
+            </div>
 
-                        </select>
-                    </div>
-                </div>
-            </aside>
-
-        </div>
+            <div class="setting-group" style="margin-top: 20px">
+              <label>Active Agent</label>
+              <select
+                class="mode-select"
+                style="
+                  width: 100%;
+                  border: 1px solid var(--border-color);
+                  margin-top: 5px;
+                  padding: 10px;
+                "
+              >
+                <option>visionAgent_v2 (Default)</option>
+                <option>Search Agent</option>
+              </select>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
-    
+
     <script src="/static/script.js"></script>
-    
+
     <script type="module">
-        import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
+      import RFB from "https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js";
 
-        let rfb;
-        const statusDot = document.getElementById('vnc-status');
-        const placeholder = document.getElementById('vnc-placeholder');
+      let rfb;
+      const statusDot = document.getElementById("vnc-status");
+      const placeholder = document.getElementById("vnc-placeholder");
 
-        function connectVNC(config) {
-            const screen = document.getElementById('vnc-screen');
-            // Build VNC URL from API config + current hostname
-            const cfg = config || { vnc_websocket_port: 6080, vnc_websocket_path: '/websockify' };
-            const url = `ws://${window.location.hostname}:${cfg.vnc_websocket_port}${cfg.vnc_websocket_path}`;
-            console.log('[VNC] Connecting to:', url);
+      function connectVNC(config) {
+        const screen = document.getElementById("vnc-screen");
+        // Build VNC URL from API config + current hostname
+        const cfg = config || {
+          vnc_websocket_port: 6080,
+          vnc_websocket_path: "/websockify",
+        };
+        const url = `ws://${window.location.hostname}:${cfg.vnc_websocket_port}${cfg.vnc_websocket_path}`;
+        console.log("[VNC] Connecting to:", url);
 
-            try {
-                rfb = new RFB(screen, url);
-                
-                rfb.scaleViewport = true; 
-                rfb.resizeSession = false;
+        try {
+          rfb = new RFB(screen, url);
 
-                rfb.addEventListener("connect", () => {
-                    statusDot.className = "status-dot connected";
-                    placeholder.style.display = "none";
-                });
+          rfb.scaleViewport = true;
+          rfb.resizeSession = false;
 
-                rfb.addEventListener("disconnect", () => {
-                    statusDot.className = "status-dot disconnected";
-                    placeholder.style.display = "flex";
-                    placeholder.textContent = "VNC Disconnected. Retrying...";
-                    setTimeout(() => connectVNC(config), 5000);
-                });
+          rfb.addEventListener("connect", () => {
+            statusDot.className = "status-dot connected";
+            placeholder.style.display = "none";
+          });
 
-            } catch (e) {
-                console.error("VNC Connection failed:", e);
-            }
+          rfb.addEventListener("disconnect", () => {
+            statusDot.className = "status-dot disconnected";
+            placeholder.style.display = "flex";
+            placeholder.textContent = "VNC Disconnected. Retrying...";
+            setTimeout(() => connectVNC(config), 5000);
+          });
+        } catch (e) {
+          console.error("VNC Connection failed:", e);
         }
+      }
 
-        // Fetch config from API, then connect
-        (async function initVNC() {
-            try {
-                const resp = await fetch('/api/config');
-                const config = await resp.json();
-                connectVNC(config);
-            } catch (e) {
-                console.warn('Could not fetch /api/config, using defaults:', e);
-                connectVNC();
-            }
-        })();
+      // Fetch config from API, then connect
+      (async function initVNC() {
+        try {
+          const resp = await fetch("/api/config");
+          const config = await resp.json();
+          connectVNC(config);
+        } catch (e) {
+          console.warn("Could not fetch /api/config, using defaults:", e);
+          connectVNC();
+        }
+      })();
     </script>
-</body>
+  </body>
 </html>

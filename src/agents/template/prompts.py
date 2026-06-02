@@ -68,7 +68,7 @@ def get_task_routing_prompt() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_template(
         "You are a highly efficient routing agent for a local desktop automation system.\n"
         "Your job is to classify the user's query into one of two categories:\n\n"
-        "1. 'question': The user wants to find a file, read code, understand architecture, or search for text. (Requires knowledge retrieval from the filesystem).\n"
+        "1. 'question': The user wants to find a file, read code, understand architecture, or search for text. Any task that only requires reading files falls under this category. (Requires knowledge retrieval from the filesystem).\n"
         "2. 'task': The user wants the agent to take physical action, such as clicking, typing, looking at the screen, or opening an application. (Requires system manipulation).\n\n"
         "Query: {query}"
     )

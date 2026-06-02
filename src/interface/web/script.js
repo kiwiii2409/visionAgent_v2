@@ -5,7 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     promptInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault(); 
-            sendMessage();
+            // Prevent spamming enter if already executing
+            if (!isExecuting) {
+                handleAction();
+            }
         }
     });
 
@@ -17,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
         this.style.height = this.scrollHeight + 'px';
     });
 });
+
+
 
 function createMessageBubble(sender) {
     const chatHistory = document.getElementById('chatHistory');
@@ -33,11 +38,50 @@ function createMessageBubble(sender) {
     return contentDiv;
 }
 
+let currentAbortController = null;
+let isExecuting = false;
+
+// Handles the click on the main button
+function handleAction() {
+    if (isExecuting) {
+        stopAgent();
+    } else {
+        sendMessage();
+    }
+}
+
+// Toggles the UI state between "Send" and "Stop"
+function setButtonState(executing) {
+    isExecuting = executing;
+    const btn = document.getElementById('actionBtn');
+    const icon = document.getElementById('actionIcon');
+    
+    if (executing) {
+        btn.classList.add('stop-mode');
+        icon.className = 'fas fa-square'; // Stop icon
+    } else {
+        btn.classList.remove('stop-mode');
+        icon.className = 'fas fa-paper-plane'; // Send icon
+    }
+}
+
+// Stops the current execution
+function stopAgent() {
+    if (currentAbortController) {
+        currentAbortController.abort(); // This cancels the fetch request
+        currentAbortController = null;
+    }
+}
+
 async function sendMessage() {
     const promptInput = document.getElementById('promptInput');
     const text = promptInput.value.trim();
     
     if (!text) return;
+
+    // Create a new AbortController for this request
+    currentAbortController = new AbortController();
+    setButtonState(true);
 
     const userBubble = createMessageBubble('user');
     userBubble.textContent = text;
@@ -63,7 +107,8 @@ async function sendMessage() {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text }) 
+            body: JSON.stringify({ prompt: text }),
+            signal: currentAbortController.signal // Attach the abort signal here
         });
 
         const reader = response.body.getReader();
@@ -75,13 +120,11 @@ async function sendMessage() {
             if (done) break;
             
             buffer += decoder.decode(value, { stream: true });
-            
             let lines = buffer.split('\n');
             buffer = lines.pop(); 
 
             for (let line of lines) {
                 if (!line.trim()) continue;
-                
                 try {
                     const data = JSON.parse(line);
                     
@@ -100,35 +143,41 @@ async function sendMessage() {
                     } 
                     else if (data.type === "msg") {
                         let htmlContent = marked.parse(data.content);
-                        
-                        // Render structured sources collapsible if they exist
                         if (data.sources && data.sources.length > 0) {
                             let sourcesList = data.sources.map(src => `<li><code>${src}</code></li>`).join('');
                             htmlContent += `
                             <details class="agent-sources">
                                 <summary><i class="fas fa-file-alt"></i> Sources</summary>
-                                <ul class="source-steps">
-                                    ${sourcesList}
-                                </ul>
+                                <ul class="source-steps">${sourcesList}</ul>
                             </details>`;
                         }
-                        
                         responseDiv.innerHTML = htmlContent;
                         thinkingToggle.removeAttribute('open');
                     } 
                     else if (data.type === "error") {
                         responseDiv.innerHTML += `<br><span style="color: #ef4444;">Error: ${data.content}</span>`;
                     }
-                    
                     document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
-
                 } catch (err) {
                     console.error("Failed to parse stream chunk:", err, line);
                 }
             }
         }
     } catch (error) {
-        responseDiv.textContent = "Error: Could not connect to the agent backend.";
+        if (error.name === 'AbortError') {
+            responseDiv.innerHTML += `<br><span style="color: #f59e0b;"><i class="fas fa-exclamation-triangle"></i> Execution stopped by user.</span>`;
+            
+            // Mark the current tool as aborted if it was running
+            if (currentToolLi && !currentToolLi.innerHTML.includes('(Completed)')) {
+                currentToolLi.innerHTML += ` <span style="color: #f59e0b;">(Aborted)</span>`;
+            }
+        } else {
+            responseDiv.textContent = "Error: Could not connect to the agent backend.";
+        }
+    } finally {
+        // Always revert the button state when the process finishes or is aborted
+        setButtonState(false);
+        currentAbortController = null;
     }
 }
 
@@ -148,7 +197,7 @@ async function indexFolder() {
 
     // Apply the blue loading state
     folderInput.value = "";
-    folderInput.placeholder = "Indexing... This might take a moment";
+    folderInput.placeholder = "Indexing...";
     folderInput.classList.add('input-loading');
     folderInput.disabled = true;
 

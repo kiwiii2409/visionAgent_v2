@@ -57,7 +57,7 @@ class SearchGraphBuilder:
     async def initial_retrieval(self, state: SearchState):
         """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
-        docs = await self.vectorstore.amax_marginal_relevance_search(state["query"], k=self.retrieval_k)
+        docs = await self.vectorstore.amax_marginal_relevance_search(state["query"], k=self.retrieval_k, fetch_k=20, lambda_mult=0.5)
         
         context = []
         tree_context = []

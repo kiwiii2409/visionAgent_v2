@@ -301,9 +301,18 @@ class ServiceRegistry:
 
         if hasattr(self, 'vnc_process'):
             self.vnc_process.terminate()
+            try:
+                self.vnc_process.wait(timeout=1.0) 
+            except subprocess.TimeoutExpired:
+                print("[Registry] Force killing stubborn VNC process")
+                self.vnc_process.kill()
 
         if hasattr(self, 'wm_process'):
             self.wm_process.terminate()
+            try:
+                self.wm_process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                self.wm_process.kill()
 
         # Only stop the display if we started it (not in Docker mode)
         if hasattr(self, 'display') and not self.settings.docker_mode:

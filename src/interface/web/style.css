@@ -614,3 +614,12 @@ textarea::placeholder {
     font-weight: 500;
     opacity: 1;
 }
+
+/* Add this to your style.css */
+.send-btn.stop-mode {
+  background: #ef4444; /* Red color for stop */
+}
+
+.send-btn.stop-mode:hover {
+  background: #dc2626;
+}

@@ -50,7 +50,7 @@ async def stream_agent_progress(prompt: str):
             "final_answer": "",
             "sources": [],
             "iterations": 0,
-            "max_iterations": registry.settings.max_iterations
+            "max_iterations": registry.settings.max_search_iterations
         }
         
         try:
