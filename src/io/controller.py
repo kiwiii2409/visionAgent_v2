@@ -19,19 +19,13 @@ class IOController:
         pyautogui.FAILSAFE = True
 
     # TODO change duration to 0.5. high value useful for testing
-    async def move_mouse(self, x: int, y: int, duration: float = 3.5) -> None:
+    async def move_mouse(self, x: int, y: int, duration: float = 1) -> None:
         """Move the mouse cursor to absolute coordinates, top Left being (0,0)"""
         await asyncio.to_thread(pyautogui.moveTo, x, y, duration=duration)
 
     async def click(self, x: int | None = None, y: int | None = None, button: Literal["left", "right", "middle"] = "left", clicks: int = 1) -> None:
         """Click at specified coordinates or current position."""
-        await asyncio.to_thread(
-            pyautogui.click,
-            x=x,
-            y=y,
-            clicks=clicks,
-            button=button
-        )
+        await asyncio.to_thread(pyautogui.click,x=x,y=y,clicks=clicks,button=button)
 
     async def scroll(self, amount: int, x: int | None = None, y: int | None = None) -> None:
         """Scroll up (positive) or down (negative) at given coordinates"""
@@ -48,6 +42,12 @@ class IOController:
         """Press a single key"""
         await asyncio.to_thread(pyautogui.press, key)
 
+    async def drag_and_drop(start_x: int, start_y: int, end_x: int, end_y: int) -> str:
+        """
+        Clicks and holds left mouse from (start_x, start_y) to (end_x, end_y)
+        """
+        await asyncio.to_thread(pyautogui.moveTo, start_x, start_y)
+        await asyncio.to_thread(pyautogui.dragTo, end_x, end_y, duration=1.0, button='left')
 
 if __name__ == "__main__":
     async def test_controller():

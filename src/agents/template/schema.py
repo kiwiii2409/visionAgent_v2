@@ -5,18 +5,20 @@ Role:
 Collects all Schemas and states for langchain
 """
 
-from typing import TypedDict, List, Literal, Annotated
+from typing import TypedDict, List, Literal, Annotated, Set
 from pydantic import BaseModel, Field
 import operator
 
 class SearchState(TypedDict):
     query: str
     context_blocks: List[str]      # Stores text from Chroma, tree maps, and full files
-    known_file_paths: List[str]    # Keeps track of what we already found/read
+    known_file_paths: List[str]    # Keeps track of which files we retrieved chunks from/ read
+    explored_subtrees: Set[str]    # Keeps track of which parts of the tree we explored
     final_answer: str
     sources: List[str]
     iterations: int                # Safety bound — stops explore loop after N rounds
     max_iterations: int            # Configurable limit, set by graph builder
+    
 
 class EvaluationSchema(BaseModel):
     is_sufficient: bool = Field(description="True if the context fully answers the query and the surrounding files do not provide additional information, False otherwise.")

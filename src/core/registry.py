@@ -40,6 +40,7 @@ from src.agents.vision_graph import VisionGraphBuilder
 from src.tools.ui_tools import get_ui_tools
 from src.tools.retrieval_tools import get_retrieval_tools
 from src.tools.program_tools import get_program_tools
+from src.tools.general_tools import get_general_tools
 
 
 class ServiceRegistry:
@@ -114,9 +115,10 @@ class ServiceRegistry:
         # gather tools
         self.ui_tools = get_ui_tools(
             self.controller, self.settings.virtual_resolution[0], self.settings.virtual_resolution[1])
-        self.retrieval_tools = get_retrieval_tools(self.vector_store)
+        # self.retrieval_tools = get_retrieval_tools(self.vector_store) # TODO: uncomment once implemented
         self.program_tools = get_program_tools()
-
+        self.general_tools = get_general_tools()
+        self.all_tools = self.ui_tools  + self.general_tools + self.program_tools  # + self.retrieval_tools 
 
         self._initialized = True
 
@@ -131,12 +133,12 @@ class ServiceRegistry:
 
         await self._init_mcp()
 
-        mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
+        self.all_tools += self.mcp_tools
 
         self.search_builder = SearchGraphBuilder(
             llm=self.llm,
             vectorstore=self.vector_store,
-            mcp_tools_dict=mcp_tools_dict,
+            mcp_tools=self.mcp_tools,
             summary_tree_path=str(self.summary_tree_path),
             max_iterations=self.settings.max_iterations,
             retrieval_k=self.settings.retrieval_top_k,
@@ -147,12 +149,13 @@ class ServiceRegistry:
         # Vision agent: perceive → plan → execute → verify loop
         vision_builder = VisionGraphBuilder(
             vlm=self.vlm,
+            mcp_tools=self.all_tools,
             screen_capture=self.screen_capture,
-            io_controller=self.controller,
             max_iterations=self.settings.max_iterations,
         )
         self.vision_agent = vision_builder.build()
-        print("[Registry] Vision agent built")
+
+        print("[Registry] MCP Tools and Agents initialized")
 
     async def reload_mcp(self) -> None:
         """restart the mcp server, used after e.g. new file path was added and the tools need new folder premissions
@@ -171,7 +174,7 @@ class ServiceRegistry:
         
         new_mcp_tools_dict = {tool.name: tool for tool in self.mcp_tools}
 
-        self.search_builder.mcp_tools = new_mcp_tools_dict 
+        self.search_builder.mcp_tools_dict = new_mcp_tools_dict 
         
         print("[Registry] Restarted MCP and updated tools successfully")
 
