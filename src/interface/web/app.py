@@ -121,7 +121,17 @@ async def stream_agent_progress(prompt: str):
                             history = state_update.get("action_history", [])
                             if history:
                                 last = history[-1]
-                                label = f"Plan: {last['action_type']} — {last.get('reasoning', '')[:60]}"
+                                if last.get("type") == "tool_call":
+                                    tool_names = [call.get("name", "unknown") for call in last.get("calls", [])]
+                                    label = f"Plan: Using tools ({', '.join(tool_names)})"
+                                
+                                # Check if the agent decided it's done
+                                elif last.get("type") == "done":
+                                    label = f"Plan: Done — {last.get('reasoning', '')[:60]}"
+                                
+                                else:
+                                    label = "Plan: Processing..."                                
+                                
                                 yield json.dumps({"type": "tool", "name": label}) + "\n"
                                 await asyncio.sleep(0.3)
                                 yield json.dumps({"type": "tool_done"}) + "\n"
