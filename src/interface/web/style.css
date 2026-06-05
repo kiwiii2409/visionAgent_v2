@@ -623,3 +623,27 @@ textarea::placeholder {
 .send-btn.stop-mode:hover {
   background: #dc2626;
 }
+
+/* --- Replaced Inline HTML Utilities --- */
+.text-primary { color: var(--primary); }
+.text-error { color: #ef4444; }
+.text-warning { color: #f59e0b; }
+.list-unstyled { padding-left: 12px; font-size: 0.85rem; list-style: none; opacity: 0.8; }
+
+.spaced-group { margin-top: 20px; }
+
+/* Adjusted mode select class to absorb the HTML inline styles */
+.mode-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  margin-top: 5px;
+  appearance: auto; 
+}

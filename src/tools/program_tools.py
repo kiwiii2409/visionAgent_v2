@@ -10,7 +10,7 @@ from langchain_core.tools import tool
 from typing import Literal
 
 def get_program_tools():
-    """ Should probably remove it since it's best to open programs using the UI"""
+    """ Should probably remove it once omniparser exists since it's best to open programs using the UI"""
     @tool
     async def launch_application_tool(app_command: str) -> str:
         """

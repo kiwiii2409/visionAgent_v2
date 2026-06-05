@@ -75,7 +75,6 @@ class VisionGraphBuilder:
 
         try:
             response = await self.vlm.ainvoke([msg])
-            print(response)
         except Exception as e:
             return {"error": f"VLM call failed: {e}", "done": True}
 

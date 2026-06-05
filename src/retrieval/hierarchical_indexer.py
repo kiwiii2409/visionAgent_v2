@@ -21,7 +21,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 # Prompt template for per-file summaries (was in agents/template/prompts.py)
 _HINDEX_SUMMARY_PROMPT = ChatPromptTemplate.from_template(
-    "Summarize the core purpose of this file in 1 short sentence. "
+    "Summarize the core purpose or content of this file in 1 short sentence. "
     "File: {filepath}\n\nContent:\n{content}"
 )
 

@@ -31,11 +31,7 @@ class SearchGraphBuilder:
         self.retrieval_k = retrieval_k
 
         self.tree_path = Path(summary_tree_path)
-        if self.tree_path.exists():
-            with open(self.tree_path, "r", encoding="utf-8") as f: 
-                self.summary_tree = json.load(f)
-        else: 
-            print("[Search Graph] ERROR: No summary_tree found!")
+
     
     def _format_subtree_to_md(self, node: dict, indent_level: int = 0, max_depth: int = 2) -> str:
         """
@@ -64,6 +60,13 @@ class SearchGraphBuilder:
         """
             Finds grandparent of source_str and returns file_summaries from surrounding files starting from grandparent down to max_depth as list.
         """
+
+        if self.tree_path.exists():
+            with open(self.tree_path, "r", encoding="utf-8") as f: 
+                self.summary_tree = json.load(f)
+        else: 
+            print("[Search Graph] ERROR: No summary_tree found!")
+
         tree_context = []
         source = Path(source_str)
 
@@ -72,7 +75,7 @@ class SearchGraphBuilder:
                 try:
                     rel_parts = source.relative_to(root_str).parts
                     
-                    # for root_str being proj/ and source being .../file.md
+                    # for root_str being proj/... and source being .../file.md
                     if len(rel_parts) > 2: 
                         # for proj/src/folder/file.md -> rel_parts src/folder/file.md -> return src/ 
                         base_parts = rel_parts[:-2] 
@@ -91,17 +94,21 @@ class SearchGraphBuilder:
                     subtree_md = self._format_subtree_to_md(current_node, max_depth=max_depth)
                     
                     # Case: base_parts = () -> add artifical root name
-                    dir_label = '/'.join(base_parts) if base_parts else "root"
-                    
-                    if dir_label not in explored_subtrees:
-                        tree_context.append(f"> SURROUNDING FILES ({dir_label})\n{subtree_md}")
-                        explored_subtrees.add(dir_label)   
+                    abs_dir_path = str(Path(root_str).joinpath(*base_parts))
+                    if abs_dir_path not in explored_subtrees:
+                        formatted_tree = (
+                            f"### DIRECTORY MAP: {abs_dir_path}\n"
+                            f"```text\n{subtree_md}\n```\n"
+                        )
+                        tree_context.append(formatted_tree)                        
+                        explored_subtrees.add(abs_dir_path)   
 
                 except (KeyError, ValueError):
                     pass
 
                 break
-                
+        
+
         return tree_context
 
     async def initial_retrieval(self, state: SearchState):
@@ -122,7 +129,11 @@ class SearchGraphBuilder:
             
             paths.add(source_str)
 
-            context.append(f"> SOURCE: {source_str}\n{doc.page_content}")
+            formatted_chunk = (
+                f"### RETRIEVED SNIPPET: {source_str}\n"
+                f"```text\n{doc.page_content}\n```\n"
+            )
+            context.append(formatted_chunk)
             preview = doc.page_content[:100].replace('\n', '\\n')
             print(f"[Search Graph] Retrieved source:  {source_str}: {preview}")
 
@@ -131,6 +142,7 @@ class SearchGraphBuilder:
 
         # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
         context.extend(tree_context)  
+
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),
@@ -157,15 +169,17 @@ class SearchGraphBuilder:
         print("[Search Graph] Gather additional context")
 
         file_selector = get_file_selection_prompt() | self.llm.with_structured_output(FileSelectionSchema)
-        
+        print("*" * 50)
+        print("\n\n".join(state["context_blocks"]) )
+        print("*" * 50)
         # selects up to 3 relevant files using summaries of surrounding files
         files_response = await file_selector.ainvoke({
             "query": state["query"],
             "known_files": state["known_file_paths"],
-            "context": "\n\n".join(state["context_blocks"]) 
+            "context": "\n".join(state["context_blocks"]) 
         })
 
-        read_tool = self.mcp_tools_dict.get("read_file")
+        read_tool = self.mcp_tools_dict.get("read_document_tool")
         new_context = []
         new_tree_context = []
         new_paths = []
@@ -175,7 +189,11 @@ class SearchGraphBuilder:
         for file_path in files_response.selected_files:
             try:
                 content = await read_tool.ainvoke({"path": file_path})
-                new_context.append(f"> FULL FILE: {file_path}\n{content}")
+                formatted_file = (
+                    f"### FULL FILE CONTENT: {file_path}\n"
+                    f"```\n{content}\n```\n"
+                )
+                new_context.append(formatted_file)
                 new_paths.append(file_path)
                 
                 # fetch the surrounding directory content from the selected files
@@ -185,6 +203,7 @@ class SearchGraphBuilder:
                 new_context.append(f"> ERROR READING {file_path}: {e}")
                 
         new_context.extend(new_tree_context)  
+
 
         print(f"[Search Graph] Fetching additional context from: {new_paths}")
         return {

@@ -1,5 +1,9 @@
+import os
 import asyncio
 from langchain_core.tools import tool
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_unstructured import UnstructuredLoader
+
 
 def get_general_tools():
 
@@ -20,4 +24,33 @@ def get_general_tools():
         await asyncio.sleep(safe_seconds)
         return f"Successfully waited for {safe_seconds} seconds."
 
-    return [wait_tool]
+
+
+    @tool
+    async def read_document_tool(path: str) -> str:
+        """
+        Reads and extracts text from almost ANY file format.
+        Supported formats: .pdf, .docx, .pptx, .xlsx, .csv, .html, .md, .txt, .py, etc.
+        Always use this tool to read the contents of a file.
+        """
+        if not os.path.exists(path):
+            return f"Error: File not found at '{path}'"
+
+        try:
+            # apparently pymupdf is much faster than unstrucutredloader for pdfs
+            if path.lower().endswith('.pdf'):
+                loader = PyMuPDFLoader(path)
+                
+            else:
+                loader = UnstructuredLoader(file_path=path)
+                
+            docs = await asyncio.to_thread(loader.load)
+            
+            full_text = "\n\n".join([doc.page_content for doc in docs])
+            
+            return full_text
+            
+        except Exception as e:
+            return f"Error reading file '{path}': {str(e)}"
+        
+    return [wait_tool, read_document_tool]
