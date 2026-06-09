@@ -86,7 +86,7 @@ class HierarchicalIndexer:
                 loader = DirectoryLoader(
                     root_str,
                     glob="**/*",
-                    exclude=[".git/*", "__pycache__/*", "*.png", "*.jpg"],
+                    exclude=[".git/*", "__pycache__/*", "*.png", "*.jpg", "*.xopp"],
                     loader_cls=UnstructuredFileLoader,
                     recursive=True,
                     show_progress=False,

@@ -156,10 +156,18 @@ class SearchGraphBuilder:
         
         evaluator = get_evaluation_prompt() | self.llm.with_structured_output(EvaluationSchema)
         
-        result = await evaluator.ainvoke({
+        input_data = {
             "query": state["query"], 
             "context": "\n\n".join(state["context_blocks"])
-        })
+        }
+
+        try:
+            tokens = self.llm.get_num_tokens(get_evaluation_prompt().format(**input_data))
+            print(f"[Search Graph] Tokens passed to LLM (evaluate_context): {tokens}")
+        except Exception:
+            print(f"[Search Graph] Approx. tokens passed to LLM (evaluate_context): {len(str(input_data)) // 4}")
+
+        result = await evaluator.ainvoke(input_data)
         
         print(f"[Search Graph] { 'Sufficient' if result.is_sufficient  else 'Insufficient'} Context : {result.reasoning}")
         return {"is_sufficient_flag": result.is_sufficient} 
@@ -169,16 +177,24 @@ class SearchGraphBuilder:
         print("[Search Graph] Gather additional context")
 
         file_selector = get_file_selection_prompt() | self.llm.with_structured_output(FileSelectionSchema)
-        print("*" * 50)
-        print("\n\n".join(state["context_blocks"]) )
-        print("*" * 50)
+        # print("*" * 50)
+        # print("\n".join(state["context_blocks"]) )
+        # print("*" * 50)
         # selects up to 3 relevant files using summaries of surrounding files
-        files_response = await file_selector.ainvoke({
+        input_data = {
             "query": state["query"],
             "known_files": state["known_file_paths"],
             "context": "\n".join(state["context_blocks"]) 
-        })
+        }
 
+        try:
+            tokens = self.llm.get_num_tokens(get_file_selection_prompt().format(**input_data))
+            print(f"[Search Graph] Tokens passed to LLM (explore_additional_files): {tokens}")
+        except Exception:
+            print(f"[Search Graph] Approx. tokens passed to LLM (explore_additional_files): {len(str(input_data)) // 4}")
+
+        # selects up to 3 relevant files using summaries of surrounding files
+        files_response = await file_selector.ainvoke(input_data)
         read_tool = self.mcp_tools_dict.get("read_document_tool")
         new_context = []
         new_tree_context = []
@@ -219,10 +235,18 @@ class SearchGraphBuilder:
         print(f"[Search Graph] Synthesizing Final Answer")
 
         chain = get_synthesis_prompt() | self.llm.with_structured_output(FinalAnswerSchema)        
-        response = await chain.ainvoke({
+        input_data = {
             "query": state["query"],
             "context": "\n\n".join(state["context_blocks"])
-        })
+        }
+
+        try:
+            tokens = self.llm.get_num_tokens(get_synthesis_prompt().format(**input_data))
+            print(f"[Search Graph] Tokens passed to LLM (synthesize_answer): {tokens}")
+        except Exception:
+            print(f"[Search Graph] Approx. tokens passed to LLM (synthesize_answer): {len(str(input_data)) // 4}")
+
+        response = await chain.ainvoke(input_data)
         return {
             "final_answer": response.answer,
             "sources": response.sources

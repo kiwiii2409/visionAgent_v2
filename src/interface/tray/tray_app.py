@@ -4,17 +4,16 @@ from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QSystemTrayIcon, QMenu, QStyle
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-ICON_PATH = "icon_inv.png" 
+ICON_PATH = "icon_inv.png"
 BACKEND_URL = "http://127.0.0.1:8000/tray"
 
 class ModernTrayApp(QWidget):
     """Borderless, frameless web view container matching modern tray tools."""
-    
     def __init__(self):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(450, 600) 
+        self.setFixedSize(450, 600)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -23,8 +22,10 @@ class ModernTrayApp(QWidget):
         self.webview.page().setBackgroundColor(Qt.transparent)
         self.webview.loadFinished.connect(self.on_load_finished)
         self.load_backend()
-        
         layout.addWidget(self.webview)
+        
+        # Variable to track mouse position for window dragging
+        self._drag_pos = None
 
     def load_backend(self):
         self.webview.setUrl(QUrl(BACKEND_URL))
@@ -40,14 +41,34 @@ class ModernTrayApp(QWidget):
             self.hide()
         return super().event(e)
 
+    # --- Methods to make the frameless window movable ---
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Capture the initial click position
+            self._drag_pos = event.globalPosition().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is not None:
+            # Calculate how far the mouse has moved
+            delta = event.globalPosition().toPoint() - self._drag_pos
+            self.move(self.pos() + delta)
+            # Update the drag position
+            self._drag_pos = event.globalPosition().toPoint()
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Stop dragging when the mouse is released
+            self._drag_pos = None
+        super().mouseReleaseEvent(event)
+
 
 class TrayController:
     """Manages the system tray icon, context menu, and visibility of the main app."""
-    
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
-        
         self.window = ModernTrayApp()
         self._setup_tray_icon()
 
@@ -59,7 +80,6 @@ class TrayController:
         toggle_action = QAction("Show/Hide Interface", self.app)
         toggle_action.triggered.connect(self.toggle_window)
         menu.addAction(toggle_action)
-        
         menu.addSeparator()
         
         quit_action = QAction("Quit Vision Agent", self.app)
@@ -72,7 +92,7 @@ class TrayController:
 
     def on_tray_activated(self, reason):
         valid_triggers = (
-            QSystemTrayIcon.ActivationReason.Trigger, 
+            QSystemTrayIcon.ActivationReason.Trigger,
             QSystemTrayIcon.ActivationReason.DoubleClick
         )
         if reason in valid_triggers:
@@ -88,13 +108,13 @@ class TrayController:
         
         if tray_rect.isValid() and tray_rect.width() > 0:
             x = tray_rect.center().x() - (self.window.width() // 2)
-            y = (tray_rect.top() - self.window.height() - 10 
-                 if tray_rect.top() > screen_rect.center().y() 
+            y = (tray_rect.top() - self.window.height() - 10
+                 if tray_rect.top() > screen_rect.center().y()
                  else tray_rect.bottom() + 10)
         else:
             x = screen_rect.right() - self.window.width() - 10
             y = screen_rect.top() + 10
-        
+            
         x = max(screen_rect.left(), min(x, screen_rect.right() - self.window.width()))
         
         self.window.move(QPoint(x, y))
@@ -104,3 +124,7 @@ class TrayController:
 
     def run(self):
         sys.exit(self.app.exec())
+
+if __name__ == "__main__":
+    controller = TrayController()
+    controller.run()

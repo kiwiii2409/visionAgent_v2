@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     # common configs:
     # local, tray, enable_vnc = false
     # virtual, web, enable_vnc = true
-    display_mode: Literal["local", "virtual", "docker"] = "virtual"
-    ui_mode: Literal["tray", "web"] = "web"
+    display_mode: Literal["local", "virtual", "docker"] = "local"
+    ui_mode: Literal["tray", "web"] = "tray"
     virtual_resolution: Tuple[int, int] = (1920, 1080)
     
-    enable_vnc: bool = True 
+    enable_vnc: bool = False 
     vnc_port: int = 5900
     vnc_websocket_port: int = 6080
     vnc_websocket_path: str = "/"
@@ -43,5 +43,5 @@ class Settings(BaseSettings):
     chunk_size: int = 512
     chunk_overlap: int = 128
     auto_index_folders: List[str] = [] # gets overwritten by .env value 
-    max_iterations: int = 15
+    max_iterations: int = 30
     max_search_iterations: int = 2

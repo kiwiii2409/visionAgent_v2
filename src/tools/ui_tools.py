@@ -40,9 +40,8 @@ def get_ui_tools(controller: IOController, screen_width: int = 1920, screen_heig
     @tool
     async def type_tool(text: str) -> str:
         """
-            Types the exact provided string using the keyboard. 
-            CRITICAL: You MUST use the click_tool to click inside a text input field or search bar BEFORE using this tool.
-            Do not include 'enter' in the text; use key_press_tool for that afterward.
+            Types the exact provided string using the keyboard.
+            CRITICAL: You MUST use the click_tool to click inside a text input field or search bar BEFORE using this tool. If a field you clicked before is highlighted, the text you type will appear there. Also, look for the blinking indicator to see which field is active right now. 
         """
         await controller.write(text)
         return f"Successfully typed: '{text}'."

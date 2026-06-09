@@ -1,12 +1,21 @@
 ## How to run:
-1. activate virtual environment and install requirements: `pip install -e .`
-2. set the folder you want to index in the `.env` 
-   - **Note:** for testing choose a small folder (e.g. this codebase) to avoid wasting api credits and speedup the first startup.
-3. `python src/interface/web/app.py`
-4. in a separate terminal to stream vnc to browser: `websockify 6080 localhost:5900`
-5. visit: `http://127.0.0.1:8000/` and type request (e.g. open chrome or ask about context of file in indexed folder)
+#### Setup for OmniParser:
+<!-- 1. start VPN in separate Terminal: `sudo openvpn --config vpn-air-standard.ovpn` (download config here: https://vpn.ito.cit.tum.de/)  -->
+2. start OmniParser on Server (run `python3 gradio_demo.py` in `/data1/visionAgent/OmniParser/`)
+3. use port-forwarding, e.g. `ssh -i ~/.ssh/uni_key -L 7861:localhost:7860 manipulation_agent@131.159.60.57`
 
-**Note:** the visionAgent isn't implemented yet, therefore a ready-to-use langchain agent is used as replacement. Basic tool usage is supported but the agent doesn't get visual feedback and can therefore only follow instructions (e.g. move mouse to 100,100; open thunderbird)
+
+### Mode 1: Agent operates on your screen
+1. in `settings.py`: `"local", "tray", "False"`
+2. run `python src/main.py`
+3. a small desktop tray icon should pop up, double click to open
+ 
+### Mode 2: Agent operates on virtual screen in the backgroudn
+1. in `settings.py`: `"virtual", "web", "True"`
+2. run `websockify 6080 localhost:5900` in separate terminal
+3. run `python src/main.py`
+4. visit `http://127.0.0.1:8000/` to monitor the virtual display
+
 
 ## Idea:
 - Local website with chat, stream of virtual screen, access to settings/ ability to e.g. add folders to indexed knowledgebase
@@ -26,17 +35,16 @@
 - Automatic indexing of only changes in folders using hashing
   - avoids whole reindexing on each startup (`_requires_reindexing`)
   - avoid storing duplicates of the same chunk when reindexing
-
-
-
-## Missing & Ideas
-#### Website
 - Clean up website and agent responses
   - remove emojis from responses
   - make website pretty
   - agent-thinking-bubble in UI doesn't reliably display all steps
 - Allow user to change settings on Website
   - 
+
+
+## Missing & Ideas
+#### Website
 
 #### Memory & RAG
 

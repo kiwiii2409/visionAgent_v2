@@ -40,17 +40,29 @@ def get_synthesis_prompt() -> ChatPromptTemplate:
         "Query: {query}"
     )
 
+from langchain_core.prompts import ChatPromptTemplate
+
 def get_vision_planning_prompt() -> ChatPromptTemplate:
     """Requires 'goal', 'history_summary', and 'step_result'. Returns prompt for VLM action planning."""
     return ChatPromptTemplate.from_template(
-        "You are controlling a Linux desktop (1920x1080). Your goal is: {goal}\n\n"
-        "Recent actions taken:\n{history_summary}\n\n"
-        "Last step result: {step_result}\n\n"
-        "Look at the screenshot and decide the NEXT logical step. Always consider the time each operation takes and add a wait-toolcall if necesssary"
-        "INSTRUCTIONS:\n"
-        "- If you need to interact with the screen or system, invoke the appropriate provided tool(s).\n"
-        "- If the goal is FULLY achieved and no further action is needed, DO NOT call any tools. "
-        "Simply reply with a brief text summary explaining how the goal was accomplished."
+        "You are an expert autonomous AI agent controlling a Linux desktop GUI (Resolution: 1920x1080). "
+        "Your ultimate objective is: {goal}\n\n"
+        
+        "=== CURRENT STATE ===\n"
+        "Recent Action History:\n{history_summary}\n\n"
+        "Result of Last Action:\n{step_result}\n\n"
+        
+        "=== INSTRUCTIONS ===\n"
+        "Analyze the provided screenshot and determine the exact next logical step. Follow these rules strictly:\n\n"
+        
+        "1. VISUAL CONFIRMATION: Always verify the current screen state. Look for loading indicators, error modals, or unexpected pop-ups before deciding your next move.\n"
+        "2. ERROR RECOVERY: If the 'Result of Last Action' indicates a failure, or if the screen does not match your expected outcome, your NEXT action must be to recover (e.g., close an error, try an alternative search, or wait longer). Avoid jumping repeatedly between the same decisions (e.g. moving mouse multiple times in a row)\n"
+        "3. PACING & LATENCY: GUI operations take real time. If an application is launching, a page is loading, or the UI transitions are not complete, you MUST invoke your 'wait' tool to allow the system to catch up.\n"
+        "4. SINGLE FOCUS: Execute the next immediate logical step. Do not attempt to guess or bundle too many interactions into a single turn unless the tool explicitly supports it.\n"
+        "5. TASK COMPLETION: If the overarching goal is FULLY achieved and visually confirmed on screen, DO NOT invoke any further tools. Reply ONLY with a concise text summary explaining how the task was successfully completed.\n"
+        "6. Input Continuity: After clicking a text field, assume it remains active for the next step even if there is no visual focus indicator. Avoid reselecting fields that were already filled.\n"
+        "7. Confident Interaction: Prefer direct actions based on the current UI state (e.g., launch apps from taskbar icons when available). Trust previous interactions, avoid unnecessary corrections or repeated actions.\n"
+
     )
 
 
