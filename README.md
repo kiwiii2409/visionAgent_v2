@@ -3,6 +3,11 @@
 <!-- 1. start VPN in separate Terminal: `sudo openvpn --config vpn-air-standard.ovpn` (download config here: https://vpn.ito.cit.tum.de/)  -->
 2. start OmniParser on Server (run `python3 gradio_demo.py` in `/data1/visionAgent/OmniParser/`)
 3. use port-forwarding, e.g. `ssh -i ~/.ssh/uni_key -L 7861:localhost:7860 manipulation_agent@131.159.60.57`
+- new local YOLO option available (weights taken from OmniParser_v2)
+  - download the weights:
+    - `mkdir -p data/weights/yolo`  
+    - `for f in train_args.yaml model.pt model.yaml; do curl -L "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/$f" -o "data/weights yolo/$f"; done`
+
 
 
 ### Mode 1: Agent operates on your screen

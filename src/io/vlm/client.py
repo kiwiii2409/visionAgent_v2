@@ -93,68 +93,20 @@ load_dotenv()
 if __name__ == "__main__":
     async def test_vlm():
         models_to_test = [
-            "gpt-5.4-nano-2026-03-17",
-            # "gpt-5.4-mini-2026-03-17",
-            "gpt-5-nano-2025-08-07",
-            "gpt-4.1-nano-2025-04-14"
+            # "gpt-5.4-nano-2026-03-17",
+            "gpt-5.4-mini",
+            # "gpt-5-nano-2025-08-07",
+            # "gpt-4.1-nano-2025-04-14"
         ]
 
         timings = {}
 
         TEST_PROMPT = """
-        You are an autonomous GUI navigation agent operating a computer. 
-        You will be provided with a screenshot of the current screen and a specific task to accomplish.
-
-        Your goal is to analyze the screen, locate the necessary UI elements, and output a JSON array of exact steps to progress toward completing the task. 
-
-        ### Action Space
-        You can perform the following actions. All coordinates must be normalized floats between 0.000 and 1.000, where (0.0, 0.0) is the top-left corner and (1.0, 1.0) is the bottom-right corner.
-
-        1. "click": Move the mouse to (x, y) and click. 
-        - parameters: "x" (float), "y" (float), "button" (left/right/middle).
-        2. "type": Type a string of text. 
-        - parameters: "text" (string).
-        3. "key_press": Press a specific keyboard key (e.g., 'enter', 'tab', 'ctrl'). 
-        - parameters: "key" (string).
-        4. "scroll": Scroll the screen up or down.
-        - parameters: "amount" (integer, positive for up, negative for down).
-        5. "done": Declare the task successfully completed.
-        - parameters: none.
-
-        ### Instructions
-        1. Analyze the user's task and the current state of the screen.
-        2. Identify the logical next sequence of actions. (Keep sequences short—1 to 3 actions—so you can verify the screen state after).
-        3. Return ONLY a valid JSON object matching the exact schema below. Do not wrap it in markdown block quotes (like ```json) or add any conversational text.
-
-        ### Output Schema
-        {
-        "thought": "Briefly explain your reasoning for these steps based on what you see.",
-        "actions": [
-            {
-            "action": "click",
-            "x": 0.150,
-            "y": 0.055,
-            "button": "left"
-            },
-            {
-            "action": "type",
-            "text": "my desired search query"
-            },
-            {
-            "action": "key_press",
-            "key": "enter"
-            }
-        ]
-        }
-
-        ### Current Task
-        {task_description}
+            Return which button number to click for the following task: {task_description}
         """
 
         try:
-            test_image_cat = Image.open("data/test_images/cat_in_tuxedo.png")
-            test_image_desktop = Image.open(
-                "data/test_images/test_desktop.png")
+            test_image_desktop = Image.open("data/test_image/google_news_annotated.png")
 
         except Exception as e:
             print(f"Warning: Could not load cat image. ({e})")
@@ -173,10 +125,10 @@ if __name__ == "__main__":
 
             timings[model_name] = []
 
-            for _ in range(3):
+            for _ in range(1):
                 print("Sending Image")
                 try:
-                    user_task = "Write an email to test@test.com talking about the weather"
+                    user_task = "Which button number should i click to close the window"
                     start_time = time.time()
                     response = await client.query(
                         image=test_image_desktop,
@@ -191,14 +143,14 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"Failed: {e}")
 
-        # Final Comparison Print
-        print("\n\n" + "="*50)
-        print("Results:")
+        # # Final Comparison Print
+        # print("\n\n" + "="*50)
+        # print("Results:")
 
-        for model, times in timings.items():
-            total_time = sum(times)
-            print(
-                f"{model:<25} | Req 1: {times[0]:>5.2f}s | Req 2: {times[1]:>5.2f}s | Req 3: {times[2]:>5.2f}s | Total: {total_time:>5.2f}s")
+        # for model, times in timings.items():
+        #     total_time = sum(times)
+        #     print(
+        #         f"{model:<25} | Req 1: {times[0]:>5.2f}s | Req 2: {times[1]:>5.2f}s | Req 3: {times[2]:>5.2f}s | Total: {total_time:>5.2f}s")
 # Results:
 # gpt-5.4-nano-2026-03-17   | Req 1:  2.15s | Req 2:  1.55s | Req 3:  1.85s | Total:  5.56s
 # gpt-5.4-mini-2026-03-17   | Req 1:  1.56s | Req 2:  2.61s | Req 3:  1.74s | Total:  5.90s

@@ -58,17 +58,16 @@ class AsyncOmniParserClient:
              print(f"[OmniParserClient] Annotating the image failed with: {e}")
 
 
-    
 
 if __name__ == "__main__":
     async def test_omni():
         parser = AsyncOmniParserClient(base_url="http://127.0.0.1:7861")
-        img_sizes = [640]#, 1280, 1920]        
-        test_url = "/home/kiwiii/CodingProjects/visionAgent_v2/data/test_image/overlaying_fileexplorer.png"
+        img_sizes = [640, 1280, 1920]        
+        test_url = "/home/kiwiii/CodingProjects/visionAgent_v2/data/test_image/google_news.png"
         timing = {}
         for imgsz in img_sizes:
-            for _ in range(1):
-                timing[f"time_{imgsz}"] = []
+            timing[f"time_{imgsz}"] = []
+            for _ in range(3):
                 start_time = time.time()
                 annotated_img, parsed_json = await parser.query(
                     image_path=test_url,
@@ -81,11 +80,13 @@ if __name__ == "__main__":
                 timing[f"time_{imgsz}"].append(elapsed)
                 print(f"Image saved to path: {annotated_img}")
                 # print("Parsed Data:")
-                print(str(parsed_json)) 
+                # print(str(parsed_json)) 
 
         for name, times in timing.items():
             total_time = sum(times)
-            print(total_time)
-            # print(f"{name:<25} | Req 1: {times[0]:>5.2f}s | Req 2: {times[1]:>5.2f}s | Req 3: {times[2]:>5.2f}s | Total: {total_time:>5.2f}s")
+            print(f"{name:<25} | Req 1: {times[0]:>5.2f}s | Req 2: {times[1]:>5.2f}s | Req 3: {times[2]:>5.2f}s | Total: {total_time:>5.2f}s")
 
     asyncio.run(test_omni())
+
+
+

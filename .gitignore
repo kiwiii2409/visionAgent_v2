@@ -13,6 +13,7 @@ ENV/
 data/chroma/
 data/summary_tree/
 data/indexing/
+data/weights/
 *.sqlite3
 *.bin
 *.pickle
@@ -29,3 +30,4 @@ dist/
 *.swo
 .DS_Store
 Thumbs.db
+
