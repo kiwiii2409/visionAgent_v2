@@ -19,7 +19,7 @@ class IOController:
         pyautogui.FAILSAFE = True
 
     # TODO change duration to 0.5. high value useful for testing
-    async def move_mouse(self, x: int, y: int, duration: float = 1) -> None:
+    async def move_mouse(self, x: int, y: int, duration: float = 0.5) -> None:
         """Move the mouse cursor to absolute coordinates, top Left being (0,0)"""
         await asyncio.to_thread(pyautogui.moveTo, x, y, duration=duration)
 
@@ -34,7 +34,7 @@ class IOController:
 
         await asyncio.to_thread(pyautogui.scroll, amount)
 
-    async def write(self, text: str, interval: float = 0.01) -> None:
+    async def write(self, text: str, interval: float = 0.02) -> None:
         """Type text with a delay between keystrokes"""
         await asyncio.to_thread(pyautogui.write, text, interval=interval)
 
@@ -55,14 +55,17 @@ if __name__ == "__main__":
         import time
         time.sleep(5)
 
-        await controller.move_mouse(200, 1640, duration=2.0)
+        # await controller.move_mouse(200, 1640, duration=2.0)
 
-        await controller.click(clicks=1)
+        # await controller.click(clicks=1)
 
-        await controller.write("hello", interval=1)
+        # await controller.write("hello", interval=1)
 
-        await controller.key_press("enter")
+        # await controller.key_press("enter")
 
-        await controller.scroll(-5)
+        # await controller.scroll(-5)
+
+        await controller.key_press("win")
+        time.sleep(5)
 
     asyncio.run(test_controller())

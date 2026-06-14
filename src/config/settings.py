@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
 
+    enable_preprocessing: bool = True
+    preprocessing_base_url: str = "http://127.0.0.1:8020"
+
+    
+
     # common configs:
     # local, tray, enable_vnc = false
     # virtual, web, enable_vnc = true

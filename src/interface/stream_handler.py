@@ -64,8 +64,9 @@ async def _stream_vision_agent(prompt: str, registry: ServiceRegistry):
     vision_state = {
         "goal": prompt,
         "screenshot_b64": None,
+        "coordinate_dict": None,
         "action_history": [],
-        "step_result": "",
+        "current_plan": None,
         "done": False,
         "iterations": 0,
         "max_iterations": registry.settings.max_iterations,
@@ -80,28 +81,32 @@ async def _stream_vision_agent(prompt: str, registry: ServiceRegistry):
                 yield json.dumps({"type": "tool", "name": "Capturing screen"}) + "\n"
                 await asyncio.sleep(0.3)
                 yield json.dumps({"type": "tool_done"}) + "\n"
-
             elif node_name == "plan_action":
-                history = state_update.get("action_history", [])
-                if history:
-                    last = history[-1]
-                    if last.get("type") == "tool_call":
-                        tool_names = [call.get("name", "unknown") for call in last.get("calls", [])]
-                        label = f"Plan: Using tools ({', '.join(tool_names)})"
-                    elif last.get("type") == "done":
-                        label = f"Plan: Done — {last.get('reasoning', '')[:60]}"
-                    else:
-                        label = "Plan: Processing..."                                
-                    
+                plan = state_update.get("current_plan")
+                if plan:
+                    actions = plan.get('actions', [])
+                    tools_str = ", ".join([a.get('tool_name', 'unknown') for a in actions])
+                    thought = plan.get('thought', '')[:60]
+                    label = f"Plan: {tools_str} ({thought}...)"
                     yield json.dumps({"type": "tool", "name": label}) + "\n"
                     await asyncio.sleep(0.3)
                     yield json.dumps({"type": "tool_done"}) + "\n"
+                elif state_update.get("done"):
+                    history = state_update.get("action_history", [])
+                    if history:
+                        last = history[-1]
+                        label = f"Plan: Done — {last.get('thought', '')[:60]}"
+                        yield json.dumps({"type": "tool", "name": label}) + "\n"
+                        await asyncio.sleep(0.3)
+                        yield json.dumps({"type": "tool_done"}) + "\n"
+                        yield json.dumps({"type": "msg", "content": "Task complete."}) + "\n"
 
             elif node_name == "execute_action":
-                step = state_update.get("step_result", "")
-                if state_update.get("done", False):
-                    yield json.dumps({"type": "msg", "content": f"Task complete after {state_update.get('iterations', 0)} steps."}) + "\n"
-                elif step:
-                    yield json.dumps({"type": "tool", "name": step}) + "\n"
-                    await asyncio.sleep(0.2)
-                    yield json.dumps({"type": "tool_done"}) + "\n"
+                # LangGraph yields the *delta* for Annotated fields, so history here is a list of the *new* actions.
+                history_delta = state_update.get("action_history", [])
+                for step in history_delta:
+                    result_msg = step.get("result", "")
+                    if result_msg:
+                        yield json.dumps({"type": "tool", "name": result_msg}) + "\n"
+                        await asyncio.sleep(0.2)
+                        yield json.dumps({"type": "tool_done"}) + "\n"

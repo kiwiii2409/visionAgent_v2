@@ -20,7 +20,7 @@ from pathlib import Path
 def convert_image_to_b64(file_path):
     """reads an image from the path and returns it's b64 value"""
     if not file_path or not os.path.exists(file_path):
-        print(f"[ImgPath2B64] File not found: {file_path}")
+        print(f"[Img2B64] File not found: {file_path}")
         return None
         
     with open(file_path, "rb") as image_file:

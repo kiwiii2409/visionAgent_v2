@@ -14,6 +14,9 @@ data/chroma/
 data/summary_tree/
 data/indexing/
 data/weights/
+data/log_images/
+
+text.txt
 *.sqlite3
 *.bin
 *.pickle

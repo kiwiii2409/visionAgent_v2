@@ -5,7 +5,7 @@ Role:
 Collects all Schemas and states for langchain
 """
 
-from typing import TypedDict, List, Literal, Annotated, Set
+from typing import TypedDict, List, Literal, Annotated, Set, Dict
 from pydantic import BaseModel, Field
 import operator
 
@@ -39,25 +39,23 @@ class FinalAnswerSchema(BaseModel):
 
 # --- Vision Agent Schemas ---
 
+class ToolCallSchema(BaseModel):
+    tool_name: str = Field(description="The exact name of the tool to execute. Use 'done' if the goal is fully achieved.")
+    tool_args: dict = Field(default_factory=dict, description="Parameters for the tool. Use 'element_id' instead of exact x,y-pixelvalues for UI interactions.  Empty if tool_name is 'done'.")
+
 class VisionActionSchema(BaseModel):
-    """Structured output from VLM: a single action to take on the desktop."""
-    thought: str = Field(description="Brief reasoning about what you see and why this action is the right next step. Max 2 sentences.")
-    done: bool = Field(description="True only if the user's goal has been fully achieved. False if more actions are needed.")
-    action_type: Literal["move", "click", "type", "key", "launch", "wait", "done"] = Field(
-        description="The type of action to execute: move, click, type, key, launch, wait, or done."
-    )
-    params: dict = Field(
-        default_factory=dict,
-        description="Parameters for the action. move: {x, y}; click: {button}; type: {text}; key: {key}; launch: {command}; wait: {seconds}; done: {}"
-    )
+    """Structured output from VLM: a sequence of actions to take on the desktop."""
+    thought: str = Field(description="Brief reasoning about what you see and why these actions are the logical next steps. Max 3 sentences.")
+    actions: List[ToolCallSchema] = Field(description="List of tools (max. 4) to execute in sequence. Only chain tools which don't trigger reactions in the UI")
 
 
 class VisionState(TypedDict):
     """State for the vision-based agent loop."""
     goal: str
     screenshot_b64: str | None
+    coordinate_dict: Dict | None
     action_history: Annotated[list, operator.add]  # List[dict], append-only trajectory
-    step_result: str
+    current_plan: Dict | None
     done: bool
     iterations: int
     max_iterations: int

@@ -40,29 +40,39 @@ def get_synthesis_prompt() -> ChatPromptTemplate:
         "Query: {query}"
     )
 
-from langchain_core.prompts import ChatPromptTemplate
-
 def get_vision_planning_prompt() -> ChatPromptTemplate:
-    """Requires 'goal', 'history_summary', and 'step_result'. Returns prompt for VLM action planning."""
-    return ChatPromptTemplate.from_template(
-        "You are an expert autonomous AI agent controlling a Linux desktop GUI (Resolution: 1920x1080). "
-        "Your ultimate objective is: {goal}\n\n"
-        
-        "=== CURRENT STATE ===\n"
-        "Recent Action History:\n{history_summary}\n\n"
-        "Result of Last Action:\n{step_result}\n\n"
-        
-        "=== INSTRUCTIONS ===\n"
-        "Analyze the provided screenshot and determine the exact next logical step. Follow these rules strictly:\n\n"
-        
-        "1. VISUAL CONFIRMATION: Always verify the current screen state. Look for loading indicators, error modals, or unexpected pop-ups before deciding your next move.\n"
-        "2. ERROR RECOVERY: If the 'Result of Last Action' indicates a failure, or if the screen does not match your expected outcome, your NEXT action must be to recover (e.g., close an error, try an alternative search, or wait longer). Avoid jumping repeatedly between the same decisions (e.g. moving mouse multiple times in a row)\n"
-        "3. PACING & LATENCY: GUI operations take real time. If an application is launching, a page is loading, or the UI transitions are not complete, you MUST invoke your 'wait' tool to allow the system to catch up.\n"
-        "4. SINGLE FOCUS: Execute the next immediate logical step. Do not attempt to guess or bundle too many interactions into a single turn unless the tool explicitly supports it.\n"
-        "5. TASK COMPLETION: If the overarching goal is FULLY achieved and visually confirmed on screen, DO NOT invoke any further tools. Reply ONLY with a concise text summary explaining how the task was successfully completed.\n"
-        "6. Input Continuity: After clicking a text field, assume it remains active for the next step even if there is no visual focus indicator. Avoid reselecting fields that were already filled.\n"
-        "7. Confident Interaction: Prefer direct actions based on the current UI state (e.g., launch apps from taskbar icons when available). Trust previous interactions, avoid unnecessary corrections or repeated actions.\n"
+    """Requires 'goal', 'history_summary', 'tools_info', and 'screenshot_b64'. Returns prompt for VLM action planning."""
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system",
+            "You are an expert autonomous AI agent controlling a desktop GUI. " # Added space here
+            "Your ultimate objective is: {goal}\n\n"
+            
+            "=== AVAILABLE TOOLS ===\n"
+            "{tools_info}\n\n"
 
+            "=== INSTRUCTIONS ===\n"
+            "Analyze the provided screenshot and determine the exact next logical step. Follow these rules strictly:\n\n"
+            
+            "1. VISUAL CONFIRMATION: Always verify the current screen state. Look for loading indicators, error modals, or unexpected pop-ups before deciding your next move.\n"
+            "2. ERROR RECOVERY: If the Recent Action History indicates a failure, or if the screen does not match your expected outcome, your NEXT action must be to recover (e.g., close an error, try an alternative search, or wait longer). Avoid jumping repeatedly between the same decisions (e.g., moving mouse multiple times in a row).\n"
+            "3. PACING & LATENCY: GUI operations take real time. If an application is launching, a page is loading, or the UI transitions are not complete, you MUST invoke your 'wait' tool to allow the system to catch up.\n"
+            "4. SINGLE FOCUS: Execute the next immediate logical step. Do not attempt to guess or bundle too many interactions into a single turn if you expect the UI to change during the interactions.\n"
+            "5. INPUT CONTINUITY: After clicking a text field, assume it remains active for the next step even if there is no visual focus indicator. Avoid reselecting fields that were already filled and avoid navigating using keys, prefer the mouse!\n"
+            "6. TASK COMPLETION: If the overarching goal is FULLY achieved and visually confirmed on screen, output 'done' as the tool_name and place a concise text summary explaining how the task was successfully completed in your 'thought' reasoning.\n"
+            "7. OS AWARENESS: Find out which OS you are on using visual cues. Open the respective system menu and use the search function to open apps or switch windows.\n"
+
+            ), ("user", [
+                {
+                    "type": "text", 
+                    "text": "=== CURRENT STATE ===\nRecent Action History:\n{history_summary}\n\nOutput your reasoning and the next tool(s) to execute."
+                },
+                {
+                    "type": "image_url", 
+                    "image_url": {"url": "data:image/jpeg;base64,{screenshot_b64}"}
+                }
+            ])
+        ]
     )
 
 
