@@ -51,12 +51,11 @@ class AsyncYoloClient:
                 return None, None
             
             data = response.json()
-            print(f"[YoloClient] Successfully annotated image")
+            print(f"\n\n[YoloClient] Successfully annotated image")
             annotated_b64 = data.get("annotated_b64")
-            # Save the annotated image to disk
+
             if self.log_dir and annotated_b64:
                 try:
-                    # Strip data URI prefix if it exists (e.g., "data:image/png;base64,...")
                     clean_b64 = annotated_b64.split(",")[-1] if "," in annotated_b64 else annotated_b64
                     image_data = base64.b64decode(clean_b64)
                     
@@ -88,11 +87,13 @@ if __name__ == "__main__":
         timing = {"time_yolo": []}
         print(f"Testing YoloClient against {parser.base_url}...")
         
+        with open(test_file, "rb") as image_file:
+            base64_encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
         for _ in range(3):
             start_time = time.time()
             
             annotated_b64, parsed_json = await parser.query(
-                image_input=test_file,
+                image_input=base64_encoded_image,
                 box_threshold=0.05,
                 iou_threshold=0.1
             )

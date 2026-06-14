@@ -40,13 +40,52 @@ def get_synthesis_prompt() -> ChatPromptTemplate:
         "Query: {query}"
     )
 
+
+def get_macro_planning_prompt() -> ChatPromptTemplate:
+    """Requires 'goal' as parameter. Returns prompt for high-level task breakdown."""
+    return ChatPromptTemplate.from_messages([
+        ("system", 
+         "You are an expert high-level task planner for a GUI automation agent.\n"
+         "Your job is to break down the user's overarching goal into a sequence of small, highly specific, and actionable subgoals.\n"
+         "Each subgoal should represent a distinct phase of the task (e.g., '1. Open Web Browser', '2. Navigate to google.com', '3. Search for the query').\n"
+         "Keep the subgoals concise and achievable in a few steps."
+        ),
+        ("user", "Goal: {goal}")
+    ])
+
+
+def get_vision_evaluation_prompt():
+    return ChatPromptTemplate.from_messages([
+        ("system", 
+         "You are an expert, objective visual QA evaluator for an autonomous computer agent. "
+         "Your sole job is to look at a screenshot and determine if a specific subgoal has been successfully accomplished.\n\n"
+         "CRITICAL RULES:\n"
+         "1. Be strict and objective. Do not assume the action succeeded unless there is explicit visual proof. Provide the evidence\n"
+         "2. Look for concrete visual cues: changed button states, opened menus, specific text appearing on screen, URL changes, or success modals.\n"
+         "3. If a subgoal requires finding or opening a setting, the setting's specific menu or window MUST be open and visible. Seeing a search result or launcher icon is NOT sufficient.\n"
+         "4. If the screenshot looks like it is still loading, or you cannot definitively tell if the goal is met, mark it as NOT achieved.\n"
+        ),
+        ("human", [
+            {
+                "type": "text", 
+                "text": "Please evaluate the screen state.\n\nSubgoal to evaluate: {current_subgoal}"
+            },
+            {
+                "type": "image_url", 
+                "image_url": {"url": "data:image/jpeg;base64,{screenshot_b64}"}
+            }
+        ])
+    ])
+
 def get_vision_planning_prompt() -> ChatPromptTemplate:
     """Requires 'goal', 'history_summary', 'tools_info', and 'screenshot_b64'. Returns prompt for VLM action planning."""
     return ChatPromptTemplate.from_messages(
         [
             ("system",
-            "You are an expert autonomous AI agent controlling a desktop GUI. " # Added space here
+            "You are an expert autonomous AI agent controlling a desktop GUI.\n"
             "Your ultimate objective is: {goal}\n\n"
+            "Your CURRENT SUBGOAL is: {current_subgoal}\n"
+            "Focus entirely on completing this CURRENT SUBGOAL. Do not worry about the later steps yet.\n\n"
             
             "=== AVAILABLE TOOLS ===\n"
             "{tools_info}\n\n"
@@ -59,13 +98,12 @@ def get_vision_planning_prompt() -> ChatPromptTemplate:
             "3. PACING & LATENCY: GUI operations take real time. If an application is launching, a page is loading, or the UI transitions are not complete, you MUST invoke your 'wait' tool to allow the system to catch up.\n"
             "4. SINGLE FOCUS: Execute the next immediate logical step. Do not attempt to guess or bundle too many interactions into a single turn if you expect the UI to change during the interactions.\n"
             "5. INPUT CONTINUITY: After clicking a text field, assume it remains active for the next step even if there is no visual focus indicator. Avoid reselecting fields that were already filled and avoid navigating using keys, prefer the mouse!\n"
-            "6. TASK COMPLETION: If the overarching goal is FULLY achieved and visually confirmed on screen, output 'done' as the tool_name and place a concise text summary explaining how the task was successfully completed in your 'thought' reasoning.\n"
-            "7. OS AWARENESS: Find out which OS you are on using visual cues. Open the respective system menu and use the search function to open apps or switch windows.\n"
+            "6. OS AWARENESS: Find out which OS you are on using visual cues. Open the respective system menu and use the search function to open apps or switch windows.\n"
 
             ), ("user", [
                 {
                     "type": "text", 
-                    "text": "=== CURRENT STATE ===\nRecent Action History:\n{history_summary}\n\nOutput your reasoning and the next tool(s) to execute."
+                    "text": "=== CURRENT STATE ===\nRecent Action History:\n{history_summary}\n\nOutput your reasoning and the next tool(s) to execute.\n "
                 },
                 {
                     "type": "image_url", 

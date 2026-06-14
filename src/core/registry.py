@@ -63,7 +63,7 @@ class ServiceRegistry:
         self._setup_display()
         self._init_models()
         self._init_services()
-        self.all_tools = get_ui_tools(self.controller, self.settings.virtual_resolution[0], self.settings.virtual_resolution[1]) + get_general_tools() #+ get_program_tools() # TODO: activate get_program_tool for testing if UI opening doesnt owrk
+        self.all_tools = get_ui_tools(self.controller) + get_general_tools() #+ get_program_tools() # TODO: activate get_program_tool for testing if UI opening doesnt owrk
 
         self._initialized = True
 

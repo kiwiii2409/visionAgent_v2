@@ -40,8 +40,8 @@ class FinalAnswerSchema(BaseModel):
 # --- Vision Agent Schemas ---
 
 class ToolCallSchema(BaseModel):
-    tool_name: str = Field(description="The exact name of the tool to execute. Use 'done' if the goal is fully achieved.")
-    tool_args: dict = Field(default_factory=dict, description="Parameters for the tool. Use 'element_id' instead of exact x,y-pixelvalues for UI interactions.  Empty if tool_name is 'done'.")
+    tool_name: str = Field(description="The exact name of the tool to execute.")
+    tool_args: dict = Field(default_factory=dict, description="Parameters for the tool. Use 'element_id' instead of exact (x,y)-pixel-values for UI interactions.  Empty if tool_name is 'done'.")
 
 class VisionActionSchema(BaseModel):
     """Structured output from VLM: a sequence of actions to take on the desktop."""
@@ -49,14 +49,24 @@ class VisionActionSchema(BaseModel):
     actions: List[ToolCallSchema] = Field(description="List of tools (max. 4) to execute in sequence. Only chain tools which don't trigger reactions in the UI")
 
 
+class VisionEvaluationSchema(BaseModel):
+    reasoning: str = Field(description="Brief explanation of what visual evidence confirms or refutes completion. Max 2 sentences.")
+    is_subgoal_achieved: bool = Field(description="True if the visual evidence on the screen confirms the current subgoal is achieved, False otherwise.")
+
+class MacroPlanSchema(BaseModel):
+    """Structured output from VLM: A high-level sequence of subgoals to achieve a task."""
+    subgoals: List[str] = Field(description="A sequential list of textual subgoals required to complete the main goal.")
+
 class VisionState(TypedDict):
-    """State for the vision-based agent loop."""
     goal: str
+    subgoals: List[str]               
+    current_subgoal_index: int        
     screenshot_b64: str | None
     coordinate_dict: Dict | None
-    action_history: Annotated[list, operator.add]  # List[dict], append-only trajectory
+    action_history: Annotated[list, operator.add]
     current_plan: Dict | None
     done: bool
+    subgoal_done: bool                
     iterations: int
     max_iterations: int
     error: str | None

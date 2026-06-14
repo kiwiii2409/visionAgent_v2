@@ -3,51 +3,59 @@ src/tools/ui_tools.py
 
 Role:
 """
-from typing import Literal
+from typing import Literal, Optional
 from langchain_core.tools import tool
 from src.io.controller import IOController
-
-def get_ui_tools(controller: IOController, screen_width: int = 1920, screen_height: int = 1080):
+import asyncio
+def get_ui_tools(controller: IOController):
 # TODO: once Omniparser works, change method signature to support button number and add translation to coordinates 
 
     @tool
-    async def move_mouse_tool(x: float, y: float) -> str:
+    async def move_mouse_tool(element_id: Optional[str] = None, x: Optional[float] = None, y: Optional[float] = None) -> str:
         """
-            Moves the mouse cursor to a specific UI element without clicking.
-            CRITICAL INSTRUCTION: You MUST provide 'element_id' (the numeric label from the image) in your tool_args instead of x and y. The system will auto-translate it.
-            - Use this to hover over elements to reveal tooltips, expand dropdown menus, or prepare for scrolling.
-            - Fallback: Only pass 'x' and 'y' directly if there is no bounding box and you must guess the pixel location.
+        Moves the mouse cursor to a specific UI element without clicking.
+        - PRIMARY METHOD: Provide 'element_id' if the destination has a numeric label in the annotated image.
+        - FALLBACK METHOD: Only pass 'x' and 'y' (0 to screen width/height) if there is NO bounding box. Estimate the pixel coordinates using nearby labeled boxes.
+        Do not provide both element_id and coordinates.
         """
-        if x < screen_width and x >= 0 and y < screen_height and y >= 0:
+        if x is not None and y is not None:
             await controller.move_mouse(x=x, y=y)
             return f"Successfully moved mouse to ({x}, {y})."
-        else:
-            return f"Error: Coordinates ({x}, {y}) are out of bounds for the screen size ({screen_width}, {screen_height})."
+        return "Error: System failed to resolve element_id to coordinates. Please use x,y fallback."
 
     @tool
-    async def click_tool(x: float, y: float, button: Literal["left", "right", "middle"] = "left", clicks: int = 1) -> str:
+    async def click_tool(
+        element_id: Optional[str] = None, 
+        x: Optional[float] = None, 
+        y: Optional[float] = None, 
+        button: Literal["left", "right", "middle"] = "left", 
+        clicks: int = 1
+    ) -> str:
         """
-            Clicks a specific UI element on the screen.
-            CRITICAL INSTRUCTION: You MUST provide 'element_id' (the numeric label from the image) in your tool_args instead of x and y. The system will auto-translate it.
-            - Use clicks=1 for standard selection, clicking buttons, or focusing text input fields.
-            - Use clicks=2 to double-click (e.g., opening applications from the desktop, selecting a full word).
-            - Set button to "left" (default action), "right" (to open context menus), or "middle".
-            - Fallback: Only pass 'x' and 'y' directly if there is no bounding box ID available.
+        Clicks a specific UI element on the screen.
+        - PRIMARY METHOD: Provide 'element_id' if the destination has a numeric label.
+        - FALLBACK METHOD: Only pass 'x' and 'y' directly if there is NO bounding box. Estimate the pixel coordinates using nearby labeled boxes. Text-Fields often lack the bounding-box, be careful there and use direct coordinate prediction if they lack a clear 'element_id'.
+        - Use clicks=1 for standard selection. Use clicks=2 to double-click.
+        - Set button to "left", "right", or "middle".
         """
-        if x < screen_width and x >= 0 and y < screen_height and y >= 0:
-            await controller.click(x=x, y=y, button=button, clicks=clicks)
-            return f"Successfully clicked {button} button at ({x}, {y})."
-        else:
-            return f"Error: Coordinates ({x}, {y}) are out of bounds for the screen size ({screen_width}, {screen_height})."
+        if x is not None and y is not None:
+            await controller.move_mouse(x=x, y=y) 
+            await asyncio.sleep(0.5)
+            await controller.click(button=button, clicks=clicks)
+            return f"Successfully moved to and clicked {button} button at ({x}, {y})."
+    
+        return "Error: System failed to resolve element_id to coordinates. Please use x,y fallback."
 
     @tool
     async def type_tool(text: str) -> str:
         """
-            Types the exact provided string using the keyboard.
-            CRITICAL: You MUST use the click_tool to click inside a text input field or search bar BEFORE using this tool. If a field you clicked before is highlighted, the text you type will appear there. Also, look for the blinking indicator to see which field is active right now.now. 
+        Types the exact provided string using the keyboard.
+        When using for queries try to keep the general and not too specific to avoid specific naming formats or special characters from interfering (e.g. change time -> search for 'time' instead of 'Data & Time')
+        CRITICAL: You MUST use the click_tool to click inside a text input field BEFORE using this tool.
         """
         await controller.write(text)
         return f"Successfully typed: '{text}'."
+
 
     @tool
     async def key_press_tool(key: str) -> str:
