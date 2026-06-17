@@ -33,7 +33,7 @@ class SearchGraphBuilder:
         self.tree_path = Path(summary_tree_path)
 
     
-    def _format_subtree_to_md(self, node: dict, indent_level: int = 0, max_depth: int = 2) -> str:
+    def _format_subtree_to_md(self, node: dict, base_path: str, collected_summaries: dict, indent_level: int = 0, max_depth: int = 2) -> str:
         """
         Formats json tree into markdown, max_depth to limit the depth of the tree.
         """
@@ -41,22 +41,27 @@ class SearchGraphBuilder:
         indent = "  " * indent_level
         
         for key, value in node.items():
+            current_path = str(Path(base_path) / key)
+
             if value["_type"] == "file":
-                lines.append(f"{indent}├── {key} - {value.get('summary', '')}")
+                summary = value.get('summary', '')
+                lines.append(f"{indent}├── {key} - {summary}")
+                collected_summaries[current_path] = summary # store summaries in dict for fast lookup later
+
             elif value["_type"] == "folder":
                 lines.append(f"{indent}├── {key}/")
                 
                 # check whether children should still be displayed
                 if indent_level < max_depth:
-                    child_str = self._format_subtree_to_md(value["children"], indent_level + 1, max_depth)
-                    if child_str:
+                    child_str = self._format_subtree_to_md(value["children"], current_path, collected_summaries, indent_level + 1, max_depth)                    
+                if child_str:
                         lines.append(child_str)
                 else:
                     lines.append(f"{indent}  └── ... (deeper files omitted)") # placeholder s.t. llm knows that it continues there
                     
         return "\n".join(lines)
     
-    def _get_surrounding_context(self, source_str: str, explored_subtrees: set, max_depth: int =2) -> list:
+    def _get_surrounding_context(self, source_str: str, explored_subtrees: set, collected_summaries:dict, max_depth: int =2) -> list:
         """
             Finds grandparent of source_str and returns file_summaries from surrounding files starting from grandparent down to max_depth as list.
         """
@@ -90,12 +95,12 @@ class SearchGraphBuilder:
                     for part in base_parts: # iterate to starting point (up to grandparent)
                         current_node = current_node[part]["children"]
                     
-                    # build the md tree
-                    subtree_md = self._format_subtree_to_md(current_node, max_depth=max_depth)
-                    
                     # Case: base_parts = () -> add artifical root name
                     abs_dir_path = str(Path(root_str).joinpath(*base_parts))
                     if abs_dir_path not in explored_subtrees:
+                        # build the md tree
+                        subtree_md = self._format_subtree_to_md(current_node, abs_dir_path, collected_summaries, max_depth=max_depth)
+
                         formatted_tree = (
                             f"### DIRECTORY MAP: {abs_dir_path}\n"
                             f"```text\n{subtree_md}\n```\n"
@@ -120,6 +125,7 @@ class SearchGraphBuilder:
         tree_context = []
         paths = set()
         explored_subtrees = set()
+        collected_summaries = state.get("file_summaries", {}) # Get dict from state
 
         for doc in docs:
             source_str = doc.metadata.get("source", "unknown_path")
@@ -137,7 +143,7 @@ class SearchGraphBuilder:
             preview = doc.page_content[:100].replace('\n', '\\n')
             print(f"[Search Graph] Retrieved source:  {source_str}: {preview}")
 
-            new_tree_blocks = self._get_surrounding_context(source_str, explored_subtrees, max_depth= 2    )
+            new_tree_blocks = self._get_surrounding_context(source_str, explored_subtrees, collected_summaries, max_depth=2)
             tree_context.extend(new_tree_blocks)
 
         # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
@@ -146,7 +152,9 @@ class SearchGraphBuilder:
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),
-            "explored_subtrees": explored_subtrees
+            "explored_subtrees": explored_subtrees,
+            "file_summaries": collected_summaries
+
         }
                 
 
@@ -201,6 +209,7 @@ class SearchGraphBuilder:
         new_paths = []
 
         explored_subtrees = state.get("explored_subtrees", set())
+        collected_summaries = state.get("file_summaries", {}) # Get dict from state
 
         for file_path in files_response.selected_files:
             try:
@@ -213,7 +222,7 @@ class SearchGraphBuilder:
                 new_paths.append(file_path)
                 
                 # fetch the surrounding directory content from the selected files
-                new_tree_blocks = self._get_surrounding_context(file_path, explored_subtrees, max_depth=2)
+                new_tree_blocks = self._get_surrounding_context(file_path, explored_subtrees, collected_summaries, max_depth=2)
                 new_tree_context.extend(new_tree_blocks)
             except Exception as e:
                 new_context.append(f"> ERROR READING {file_path}: {e}")
@@ -226,7 +235,9 @@ class SearchGraphBuilder:
                 "context_blocks": state["context_blocks"] + new_context,
                 "known_file_paths": state["known_file_paths"] + new_paths,
                 "explored_subtrees": explored_subtrees,
-                "iterations": state.get("iterations", 0) + 1
+                "iterations": state.get("iterations", 0) + 1,
+                "file_summaries": collected_summaries 
+
         }
 
 
@@ -247,9 +258,27 @@ class SearchGraphBuilder:
             print(f"[Search Graph] Approx. tokens passed to LLM (synthesize_answer): {len(str(input_data)) // 4}")
 
         response = await chain.ainvoke(input_data)
+        collected_summaries = state.get("file_summaries", {})
+        enriched_sources = [] # gather additional information besdies path for google-like overview
+        raw_sources = response.sources if hasattr(response, 'sources') and response.sources else []
+        
+        for src in raw_sources:
+            path_str = src if isinstance(src, str) else src.get("source", src.get("path", ""))
+            if not path_str: continue
+            
+            file_name = Path(path_str).name
+            # simple lookup to retrieve summary
+            file_summary = collected_summaries.get(path_str, "No summary available.")
+            
+            enriched_sources.append({
+                "name": file_name,
+                "path": path_str,
+                "summary": file_summary
+            })
+
         return {
             "final_answer": response.answer,
-            "sources": response.sources
+            "sources": enriched_sources
         }
     
     def evaluation_router(self, state: dict):

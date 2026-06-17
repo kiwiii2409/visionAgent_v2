@@ -15,7 +15,8 @@ class SearchState(TypedDict):
     known_file_paths: List[str]    # Keeps track of which files we retrieved chunks from/ read
     explored_subtrees: Set[str]    # Keeps track of which parts of the tree we explored
     final_answer: str
-    sources: List[str]
+    sources: List[Dict[str,str]]   # enriched sources for Google-like view (instead of path, include summary, name and path)
+    file_summaries: Dict[str, str] # Lookup dict for paths -> summaries
     iterations: int                # Safety bound — stops explore loop after N rounds
     max_iterations: int            # Configurable limit, set by graph builder
     

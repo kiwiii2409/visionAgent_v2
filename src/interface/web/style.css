@@ -1,21 +1,24 @@
 :root {
-  /* Deep Modern Dark Theme - Darkened */
-  --desk-bg: #000000;
-  --bg-color: #0d0d0f;
-  --chat-bg: #0a0a0c;
-  --sidebar-bg: #0d0d0f;
+  --bg-color: #f5f7fa;
+  --chat-bg: #ffffff;
+  --panel-bg: #f8fafc;
 
-  --primary: #5c67f2;
-  --primary-hover: #4a54c4;
+  --primary: #4f6ef7;
+  --primary-hover: #3f5ce0;
 
-  --text-main: #e4e4e7;
-  --text-muted: #a1a1aa;
-  --border-color: #27272a;
-  --input-bg: #18181b;
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
 
-  --user-msg-bg: #18181b;
-  --sys-msg-bg: rgba(92, 103, 242, 0.05);
-  --sys-msg-border: rgba(92, 103, 242, 0.2);
+  --border-color: #e5e7eb;
+
+  --input-bg: #ffffff;
+
+  --user-msg-bg: #f3f4f6;
+
+  --sys-msg-bg: #eef4ff;
+  --sys-msg-border: #cddcff;
+
+  --code-bg: #f1f5f9;
 }
 
 * {
@@ -26,7 +29,7 @@
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 var(--bg-color);
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -39,23 +42,28 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46; /* A subtle grey that matches the theme */
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted); /* Highlights slightly on hover */
+  background: var(--text-muted);
 }
 
 body {
-  background-color: var(--desk-bg);
+  background-color: var(--bg-color);
   color: var(--text-main);
-  height: 100vh;
+  min-height: 100vh; /* Changed from strict height to min-height */
+  margin: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* This pins it to the top and fixes the cutoff! */
 }
 
+#task-interface {
+  width: 100%;
+  height: 100vh;
+}
 /* Base App Layout */
 .workspace-desk {
   width: 100%;
@@ -73,7 +81,7 @@ body {
   max-height: 100vh;
   background-color: var(--bg-color);
   border-radius: 0;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15); /* Softened shadow for light mode */
   border: 1px solid var(--border-color);
   overflow: hidden;
 }
@@ -101,6 +109,28 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
 }
+.header-btn {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 14px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+        background-color: var(--primary);
+
+}
+
+.header-btn:hover {
+    background-color: var(--user-msg-bg);
+    color: var(--primary);
+    border-color: var(--primary);
+}
 
 .chat-history {
   flex: 1;
@@ -123,7 +153,7 @@ body {
 }
 
 .message-content {
-  padding: 20px 24px; /* Increased padding */
+  padding: 20px 24px;
   border-radius: 12px;
   line-height: 1.6;
   color: var(--text-main);
@@ -155,9 +185,10 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 8px 10px 15px;
-  position: relative; /* Required to anchor the absolute button */
+  position: relative;
   transition: border-color 0.2s;
 }
+
 .input-wrapper:focus-within {
   border-color: var(--primary);
 }
@@ -165,7 +196,7 @@ body {
 /* Sidebar Dropdown Styling */
 .mode-select {
   width: 100%;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: var(--input-bg);
@@ -175,7 +206,7 @@ body {
   outline: none;
   cursor: pointer;
   margin-top: 5px;
-  appearance: auto; /* Ensures the dropdown arrow is visible */
+  appearance: auto;
 }
 
 .mode-select:focus {
@@ -215,11 +246,7 @@ textarea::placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition:
-    background 0.2s,
-    transform 0.1s;
-
-  /* New Positioning Rules */
+  transition: background 0.2s, transform 0.1s;
   position: absolute;
   right: 24px;
   bottom: 10px;
@@ -230,11 +257,19 @@ textarea::placeholder {
   transform: scale(1.05);
 }
 
+.send-btn.stop-mode {
+  background: #ef4444; 
+}
+
+.send-btn.stop-mode:hover {
+  background: #dc2626;
+}
+
 /* --- Right Page: Settings Sidebar --- */
 .settings-sidebar {
   width: 800px;
   flex-shrink: 0;
-  background-color: var(--sidebar-bg);
+  background-color: var(--panel-bg);
   display: flex;
   flex-direction: column;
   border-left: 2px solid var(--border-color);
@@ -305,7 +340,7 @@ textarea::placeholder {
 
 /* --- VNC Monitor Styles --- */
 .vnc-monitor-container {
-  background-color: #000000;
+  background-color: var(--panel-bg);
   border-bottom: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -321,14 +356,14 @@ textarea::placeholder {
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-muted);
-  background-color: var(--sidebar-bg);
+  background-color: var(--panel-bg);
   border-bottom: 1px solid var(--border-color);
 }
 
 #vnc-screen {
   width: 100%;
   height: 450px;
-  background-color: #0a0a0c;
+  background-color: #000000; /* Maintained true black specifically for screen contrast */
   position: relative;
   overflow: hidden;
   display: flex;
@@ -337,7 +372,7 @@ textarea::placeholder {
 }
 
 #vnc-placeholder {
-  color: var(--text-muted);
+  color: #6b7280;
   font-size: 0.8rem;
   font-style: italic;
   text-align: center;
@@ -381,7 +416,7 @@ textarea::placeholder {
 
 /* --- Agent Thinking Process Styles --- */
 .agent-thinking {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--code-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
@@ -417,10 +452,10 @@ textarea::placeholder {
 }
 
 .agent-thinking li code {
-  background-color: #000;
+  background-color: var(--border-color);
   padding: 2px 6px;
   border-radius: 4px;
-  color: #e4e4e7;
+  color: var(--text-main);
 }
 
 /* --- Agent Response Base --- */
@@ -492,16 +527,16 @@ textarea::placeholder {
 }
 
 .agent-response code {
-  background-color: var(--desk-bg);
+  background-color: var(--code-bg);
   padding: 3px 6px;
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.9em;
-  color: #a5b4fc;
+  color: #c026d3; /* Darker magenta for light mode visibility */
 }
 
 .agent-response pre {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--code-bg);
   padding: 16px;
   border-radius: 8px;
   overflow-x: auto;
@@ -523,7 +558,7 @@ textarea::placeholder {
   margin: 16px 0;
   color: var(--text-muted);
   font-style: italic;
-  background-color: rgba(92, 103, 242, 0.05);
+  background-color: var(--sys-msg-bg);
   padding-top: 12px;
   padding-bottom: 12px;
   border-radius: 0 4px 4px 0;
@@ -531,8 +566,8 @@ textarea::placeholder {
 
 /* --- Sources Collapsible Styles --- */
 .agent-sources {
-  background-color: rgba(92, 103, 242, 0.05);
-  border: 1px solid var(--border-color);
+  background-color: var(--sys-msg-bg);
+  border: 1px solid var(--sys-msg-border);
   border-radius: 8px;
   padding: 12px;
   margin-top: 16px;
@@ -567,83 +602,291 @@ textarea::placeholder {
 }
 
 .agent-sources li code {
-  background-color: #000;
+  background-color: var(--border-color);
   padding: 2px 6px;
   border-radius: 4px;
-  color: #e4e4e7;
+  color: var(--text-main);
 }
 
-/* Input Success Overlay Animation */
+/* Input Overlays */
 .input-success {
-    background-color: rgba(34, 197, 94, 0.15) !important;
+    background-color: #dcfce7 !important;
     border-color: #22c55e !important;
-    color: #22c55e !important;
+    color: #166534 !important;
     transition: all 0.5s ease;
 }
 
 .input-success::placeholder {
-    color: #22c55e !important;
+    color: #166534 !important;
     font-weight: 500;
     opacity: 1;
 }
 
-/* Input Loading State */
 .input-loading {
-    background-color: rgba(59, 130, 246, 0.1) !important; /* Light blue */
+    background-color: #e0f2fe !important;
     border-color: #3b82f6 !important;
-    color: #3b82f6 !important;
+    color: #1e3a8a !important;
     transition: all 0.3s ease;
 }
 
 .input-loading::placeholder {
-    color: #3b82f6 !important;
+    color: #1e3a8a !important;
     font-weight: 500;
     opacity: 1;
 }
 
-/* Input Error State */
 .input-error {
-    background-color: rgba(239, 68, 68, 0.1) !important; /* Light red */
+    background-color: #fee2e2 !important;
     border-color: #ef4444 !important;
-    color: #ef4444 !important;
+    color: #991b1b !important;
     transition: all 0.3s ease;
 }
 
 .input-error::placeholder {
-    color: #ef4444 !important;
+    color: #991b1b !important;
     font-weight: 500;
     opacity: 1;
 }
 
-/* Add this to your style.css */
-.send-btn.stop-mode {
-  background: #ef4444; /* Red color for stop */
-}
-
-.send-btn.stop-mode:hover {
-  background: #dc2626;
-}
-
-/* --- Replaced Inline HTML Utilities --- */
+/* Utilities */
 .text-primary { color: var(--primary); }
 .text-error { color: #ef4444; }
 .text-warning { color: #f59e0b; }
 .list-unstyled { padding-left: 12px; font-size: 0.85rem; list-style: none; opacity: 0.8; }
-
 .spaced-group { margin-top: 20px; }
 
-/* Adjusted mode select class to absorb the HTML inline styles */
-.mode-select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--input-bg);
-  color: var(--text-main);
-  font-size: 0.9rem;
-  font-weight: 500;
-  outline: none;
-  cursor: pointer;
-  margin-top: 5px;
-  appearance: auto; 
+
+/* --- Google-like Search Interface --- */
+#search-interface {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background-color: var(--bg-color); 
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.search-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-top: 25vh; 
+    transition: margin-top 0.4s ease-out;
+}
+
+#search-interface.results-mode .search-header {
+    margin-top: 2vh; 
+}
+
+.logo {
+    font-size: 5rem;
+    font-weight: bold;
+    margin-bottom: 30px;
+    letter-spacing: -2px;
+}
+
+.search-bar-container {
+    width: 100%;
+    max-width: 750px; /* Increased from 600px */
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    padding: 16px 28px; /* Slightly increased padding */
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 28px; 
+    font-size: 18px; /* Increased from 16px */
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.search-input:hover, .search-input:focus {
+    box-shadow: 0 1px 6px rgba(32,33,36,.15); /* Soft, natural light-mode shadow */
+    border-color: var(--primary);
+}
+
+.search-buttons {
+    margin-top: 25px;
+    display: flex;
+    gap: 12px;
+}
+
+.search-btn {
+    background-color: var(--user-msg-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-size: 14px;
+    padding: 0 16px;
+    height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.search-btn:hover {
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    background-color: var(--border-color);
+    color: var(--text-main);
+}
+
+/* --- Results Area --- */
+/* --- Results Area --- */
+#results-container {
+    width: 100%;
+    max-width: 850px; /* Increased from 700px */
+    margin-top: 40px;
+    text-align: left;
+    padding-bottom: 60px;
+}
+
+.ai-overview {
+    background: var(--sys-msg-bg);
+    border: 1px solid var(--sys-msg-border);
+    border-radius: 12px;
+    padding: 24px 32px; /* Increased side padding for better readability */
+    margin-bottom: 30px;
+}
+
+.ai-overview h2 {
+    font-size: 1.1rem;
+    color: var(--primary);
+    margin: 0 0 12px 0;
+}
+
+.ai-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+/* --- Document Items --- */
+.doc-result {
+    margin-top: 35px;
+
+  margin-bottom: 35px;
+}
+
+.doc-path {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-family: monospace;
+}
+
+.doc-title {
+    font-size: 20px;
+    color: var(--primary);
+    text-decoration: none;
+    margin-bottom: 4px;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.doc-title:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+}
+
+.doc-summary {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* --- Floating Settings Wheel (Search Interface) --- */
+.floating-settings-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    background: var(--chat-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    z-index: 100;
+}
+
+.floating-settings-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 4px 15px rgba(79, 110, 247, 0.15);
+    transform: rotate(30deg); /* Smooth gear rotation */
+}
+
+/* --- Search Settings Drawer & Overlay --- */
+.search-settings-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: 998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.search-settings-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.search-settings-drawer {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 400px;
+    height: 100vh;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -10px 0 30px rgba(0,0,0,0.08);
+    z-index: 999;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.search-settings-drawer.open {
+    right: 0;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.drawer-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.close-drawer-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-drawer-btn:hover {
+    color: var(--text-main);
 }

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: str = "dummy-key" # gets overwritten by .env value
     api_base_url: str = "https://api.openai.com/v1"
     vlm_model_name: str = "gpt-5.4-mini"
-    llm_model_name: str = "gpt-5.4-nano"
+    llm_model_name: str = "gpt-5.4-mini"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
 
@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     # common configs:
     # local, tray, enable_vnc = false
     # virtual, web, enable_vnc = true
-    display_mode: Literal["local", "virtual", "docker"] = "local"
-    ui_mode: Literal["tray", "web"] = "tray"
+    display_mode: Literal["local", "virtual", "docker"] = "virtual"
+    ui_mode: Literal["tray", "web"] = "web"
     virtual_resolution: Tuple[int, int] = (1920, 1080)
     
     enable_vnc: bool = False 
