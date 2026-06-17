@@ -35,7 +35,7 @@ class TaskRoutingSchema(BaseModel):
 
 class FinalAnswerSchema(BaseModel):
     answer: str = Field(description="The synthesized final answer to the user's query.")
-    sources: List[str] = Field(description="List of absolute file paths that were used as sources for this answer.")
+    sources: List[str] = Field(description="List all of the absolute file paths that were relevant for this answer.")
 
 
 # --- Vision Agent Schemas ---

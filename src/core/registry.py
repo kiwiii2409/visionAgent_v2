@@ -25,6 +25,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_openai import ChatOpenAI
 
+from sentence_transformers import CrossEncoder 
 # mcp
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -80,6 +81,8 @@ class ServiceRegistry:
             await self.document_h_indexer.build_index(self.settings.auto_index_folders)
             print(f"[Registry] Successfully indexed {len(self.settings.auto_index_folders)} folders")
         self.indexing_task = asyncio.create_task(self._background_indexer(interval_minutes=5)) # runs automatic indexing every 5 mins
+
+        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
         await self._init_mcp()
         self.all_tools += self.mcp_tools
@@ -236,6 +239,7 @@ class ServiceRegistry:
         self.search_builder = SearchGraphBuilder(
             llm=self.llm,
             vectorstore=self.vector_store,
+            reranker=self.reranker,
             mcp_tools=self.all_tools,
             summary_tree_path=str(self.summary_tree_path),
             max_iterations=self.settings.max_iterations,

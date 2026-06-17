@@ -22,9 +22,10 @@ from src.agents.template.prompts import get_evaluation_prompt, get_file_selectio
 
 
 class SearchGraphBuilder:
-    def __init__(self, llm, vectorstore, mcp_tools, summary_tree_path: str, max_iterations: int = 3, retrieval_k: int = 4):
+    def __init__(self, llm, vectorstore, reranker, mcp_tools, summary_tree_path: str, max_iterations: int = 3, retrieval_k: int = 4):
         self.llm = llm
         self.vectorstore = vectorstore
+        self.reranker = reranker
         self.mcp_tools_dict = {tool.name: tool for tool in  mcp_tools}
 
         self.max_iterations = max_iterations
@@ -119,15 +120,28 @@ class SearchGraphBuilder:
     async def initial_retrieval(self, state: SearchState):
         """Step 1: Fetch context"""
         print("[Search Graph] Initial Retrieval ")
-        docs = await self.vectorstore.amax_marginal_relevance_search(state["query"], k=self.retrieval_k, fetch_k=20, lambda_mult=0.5)
-        
+        docs = await self.vectorstore.amax_marginal_relevance_search(
+        state["query"], 
+        k=20, 
+        fetch_k=50, 
+        lambda_mult=0.5
+        )        
+
+        pairs = [(state["query"], doc.page_content) for doc in docs]
+
+        scores = self.reranker.predict(pairs)
+        scored_docs = list(zip(docs, scores))
+        scored_docs.sort(key=lambda x: x[1], reverse=True)
+        top_docs = [doc for doc, score in scored_docs[:self.retrieval_k]]
+
+
         context = []
         tree_context = []
         paths = set()
         explored_subtrees = set()
         collected_summaries = state.get("file_summaries", {}) # Get dict from state
 
-        for doc in docs:
+        for doc in top_docs:
             source_str = doc.metadata.get("source", "unknown_path")
 
             if source_str == "unknown_path":
