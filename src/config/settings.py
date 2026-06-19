@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     ui_mode: Literal["tray", "web"] = "web"
     virtual_resolution: Tuple[int, int] = (1920, 1080)
     
-    enable_vnc: bool = False 
+    enable_vnc: bool = True 
     vnc_port: int = 5900
     vnc_websocket_port: int = 6080
     vnc_websocket_path: str = "/"

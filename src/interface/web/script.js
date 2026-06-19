@@ -1,4 +1,4 @@
-// src/interface/web/script.js
+import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
 
 document.addEventListener("DOMContentLoaded", () => {
     // ==============================================
@@ -360,5 +360,42 @@ document.addEventListener("DOMContentLoaded", () => {
     // Apply the indexer functionality to both Task and Search view panels
     setupIndexer("taskFolderInput", "taskIndexBtn", "taskIndexStatus");
     setupIndexer("searchFolderInput", "searchIndexBtn", "searchIndexStatus");
+
+    // ==============================================
+    // 6. VNC Monitor Streaming (noVNC)
+    // ==============================================
+    const vncScreen = document.getElementById('vnc-screen');
+    const vncStatus = document.getElementById('vnc-status');
+    const vncPlaceholder = document.getElementById('vnc-placeholder');
+
+    // Connect to Websockify (which bridges to your IPv4 5900 port)
+    const vncUrl = 'ws://127.0.0.1:6080';
+
+    try {
+        const rfb = new RFB(vncScreen, vncUrl);
+
+        rfb.addEventListener("connect", () => {
+            console.log("VNC Connected successfully.");
+            vncStatus.classList.remove("disconnected");
+            vncStatus.classList.add("connected");
+            vncPlaceholder.style.display = "none";
+        });
+
+        rfb.addEventListener("disconnect", (e) => {
+            console.warn("VNC Disconnected.", e);
+            vncStatus.classList.remove("connected");
+            vncStatus.classList.add("disconnected");
+            vncPlaceholder.style.display = "block";
+            vncPlaceholder.innerText = "VNC Disconnected. Is Websockify running?";
+        });
+
+        // Makes the stream automatically scale to your 16:9 CSS box
+        rfb.scaleViewport = true;
+        rfb.resizeSession = true;
+
+    } catch (error) {
+        console.error("Failed to initialize VNC stream:", error);
+        vncPlaceholder.innerText = "Error loading VNC viewer.";
+    }
 
 }); // <-- Ensure this remains the end of your DOMContentLoaded wrapper

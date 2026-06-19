@@ -36,6 +36,33 @@
 - Occasional random steps/ non-sense tool-calls (e.g. clicking bounding box marking nothing) => maybe try with more capable model (> gpt 5.4 mini) to see whether it's vlm issue
 
 
+## Missing & Ideas
+#### Website
+- change settings: since we separated Task and Search they should have individual settings. 
+  - Search Settings: add new folders, (maybe) websearch active or not, 
+  - Task Settings: (?) permissions? am i allowed to delete? etc. idk
+
+#### Memory & RAG
+- more efficient indexing 
+
+#### Agents
+- Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
+  - added MMR already, but maybe add keyword search separately? 
+- better context filtering for search Agent
+- searchAgent as tool for TaskAgent, s.t. taskagent (given an absolute path) can e.g. navigate to file and send as attachment
+- (maybe) Voice Input, Websearch tool
+- Human-Intervention for TaksAgent s.t. it can wait for user password (maybe implement as additional tool)
+
+##### Less Important
+- Memory-features:
+  - Shared short-term memory between agents (should we limit that so save tokens?)
+  - (maybe) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
+    - requires: user has to be able to "rate" success in the UI after visionAgent finishes a task
+- (maybe) additional tools for task execution (closing program, creating/ deleting files) => might require "safe" mode s.t. operations are just logged without being 
+- (maybe) Multiple chats, persistent chats
+
+
+
 ## Already implemented
 - **searchAgent** with following flow: 
   - Query -> RAG to get chunks + summaries of surrounding files -> LLM decides: enough information? 
@@ -55,23 +82,6 @@
 - visionAgent using VLM + Omniparser
 
 
-
-## Missing & Ideas
-#### Website
-- new UI requirement (google-like with AI summary at top and links to documents below)
-- 
-#### Memory & RAG
-
-#### Agents
-- Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
-  - maybe switch similarity search to EnsembleRetriever or Maximal Marginal Relevance (MMR) to fan out retrieved documents (sometimes focus on one folder, but info in anot)
-- Memory-features:
-  - Shared short-term memory between agents (should we limit that so save tokens?)
-  - (maybe) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
-    - requires: user has to be able to "rate" success in the UI after visionAgent finishes a task
-- (maybe) additional tools for task execution (closing program, creating/ deleting files) => might require "safe" mode s.t. operations are just logged without being 
-- (maybe) Multiple chats, persistent chats
-- (maybe) Voice Input, Websearch tool
 
 
 

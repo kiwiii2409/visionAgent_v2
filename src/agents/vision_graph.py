@@ -97,7 +97,7 @@ class VisionGraphBuilder:
             b64_annotated, coordinate_dict = await self.preprocessor.query(b64)
             return {"screenshot_b64": b64_annotated, "coordinate_dict": coordinate_dict}
         
-        return {"screenshot_b64": b64}
+        return {"screenshot_b64": b64, "coordinate_dict": {}}
 
 
     async def evaluate_state(self, state: VisionState) -> dict:
@@ -271,7 +271,6 @@ class VisionGraphBuilder:
         if state.get("subgoal_done"):
             idx = state.get("current_subgoal_index", 0)
             subgoals = state.get("subgoals", [])
-            # If this was the last subgoal, we are completely finished
             if idx >= len(subgoals) - 1:
                 print(f"[Vision] All subgoals verified as completed!")
                 return END
@@ -288,7 +287,7 @@ class VisionGraphBuilder:
 
         graph.add_node("macro_plan", self.macro_plan)         
         graph.add_node("capture_screen", self.capture_screen)
-        graph.add_node("evaluate_state", self.evaluate_state) # Added Node
+        graph.add_node("evaluate_state", self.evaluate_state) 
         graph.add_node("plan_action", self.plan_action)
         graph.add_node("execute_action", self.execute_action)
         graph.add_node("next_subgoal", self.next_subgoal)    
@@ -312,7 +311,7 @@ class VisionGraphBuilder:
 
         graph.add_conditional_edges(
             "execute_action",
-            self.should_continue, # You can simplify this now to basically just check for errors/max iterations and loop to capture_screen
+            self.should_continue, 
             {
                 "capture_screen": "capture_screen", 
                 END: END
