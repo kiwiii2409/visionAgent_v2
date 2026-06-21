@@ -11,13 +11,16 @@ import hashlib
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Any
-from tqdm import tqdm
 
-from langchain_community.document_loaders import DirectoryLoader, UnstructuredFileLoader
+from tqdm.asyncio import tqdm as async_tqdm 
+from tqdm import tqdm 
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-
 from langchain_core.prompts import ChatPromptTemplate
+
+from src.retrieval.file_loader import AsyncFileLoader
+import time
 
 # Prompt template for per-file summaries (was in agents/template/prompts.py)
 _HINDEX_SUMMARY_PROMPT = ChatPromptTemplate.from_template(
@@ -61,7 +64,6 @@ class HierarchicalIndexer:
         Indexes all files in the specified folders. 
         Tracks still active/ existing files as well as changes using the state_file.        
         Rebuilds summary_tree and cache from scratch each run, modifies existing chromaDB to delete old files.
-        To avoid redundancy, avoid overlapping folders in the folders_to_index List
         """
         async with self._index_lock:
             print(f"\n[Indexer] Updating the index for {len(folders_to_index)} folders.")
@@ -78,92 +80,117 @@ class HierarchicalIndexer:
             active_files = set() # tracks all active files and is used to remove the ones that no longer exist
             num_modified_files = 0
             
-            for root_str in folders_to_index:
+            docs_to_summarize = []
+            paths_to_delete = []
+
+            file_loader = AsyncFileLoader() # init file loader for indexing
+            loaded_files = await file_loader.load(folders_to_index) # returns tuple (root, file_path)
+
+            time_start = time.time()
+            # file loading and gathering changes (wihtout applying them)
+
+            for root_str, doc in loaded_files:
+                file_path_str = doc.metadata["source"]
+                file_path = Path(file_path_str).resolve() 
                 root = Path(root_str).resolve()
-                if not root.exists():
-                    continue
-
-                loader = DirectoryLoader(
-                    root_str,
-                    glob="**/*",
-                    exclude=[".git/*", "__pycache__/*", "*.png", "*.jpg", "*.xopp"],
-                    loader_cls=UnstructuredFileLoader,
-                    recursive=True,
-                    show_progress=False,
-                    use_multithreading=True
-                )
-                raw_docs = await asyncio.to_thread(loader.load)
                 
-                for doc in tqdm(raw_docs, desc=f"{root_str}"):
-                    file_path = Path(doc.metadata["source"]).resolve() 
-                    file_path_str = str(file_path)
-                    content_hash = hashlib.md5(doc.page_content.encode('utf-8')).hexdigest()
+                content_hash = hashlib.md5(doc.page_content.encode('utf-8')).hexdigest()
+                active_files.add(file_path_str)
 
-                    active_files.add(file_path_str)
+                relative_path_tuple = file_path.relative_to(root).parts
+                if root_str not in tree:
+                    tree[root_str] = {"_type": "root", "children": {}}
 
-                    # file already exists & is unchanged
-                    if file_path_str in hash_file and content_hash == hash_file[file_path_str]["hash"]:
-                        summary_result = hash_file[file_path_str]["summary"]
-                    else:
-                        was_updated = True
-                        num_modified_files += 1 
-                        # file already exists & was changed
-                        if file_path_str in hash_file:
-                            print(f"[Indexer] Removing outdated embeddings for {file_path_str}")
-                            await asyncio.to_thread(self.vector_store._collection.delete, where={"source": file_path_str}) # remove embeddings from ChromaDB
-                        
-                        # avoid long llm string on empty file
-                        if len(doc.page_content) == 0:
-                            summary_result = "Empty File"
-                        else:
-                            # create summary
-                            file_summarizer = _HINDEX_SUMMARY_PROMPT | self.llm
-                            summary_response = await file_summarizer.ainvoke({
-                                "filepath": file_path_str, 
-                                "content": doc.page_content[:1500] 
-                            })
-                            summary_result = summary_response.content
-                    
-                        # update cache
-                        hash_file[file_path_str] = {"hash": content_hash, "summary": summary_result}
-
-                        # add metadata for chroma
-                        doc.metadata["file_summary"] = summary_result
-                        doc.metadata["type"] = "file"
-                        doc.metadata["source"] = file_path_str
-
-
-                        # add modified/ new document to list s.t. it's inserted into ChromaDB later
-                        new_chunked_docs.extend(self.text_splitter.split_documents([doc]))
-
-
-                    # get relative postiion to root as tuple 
-                    relative_path_tuple = file_path.relative_to(root).parts
-                    if root_str not in tree:
-                        tree[root_str] = {"_type": "root", "children": {}}
-                    
+                # file already exists & is unchanged => immediate update of tree
+                if file_path_str in hash_file and content_hash == hash_file[file_path_str]["hash"]:
+                    summary_result = hash_file[file_path_str]["summary"]
                     # update tree
                     self._insert_into_tree(
                         tree[root_str]["children"], 
                         relative_path_tuple, 
                         summary_result
                     )
+                else:
+                    # mark for processing (update or add new; done later as batch to speed it up)
+                    docs_to_summarize.append((doc, file_path_str, root_str, relative_path_tuple, content_hash))
+                    
+                    if file_path_str in hash_file: # updated files
+                        paths_to_delete.append(file_path_str)
 
-            if num_modified_files:
-                print(f"[Indexer] Total of {num_modified_files} modified files detected & updated")
+            time_elapsed = time.time() - time_start
+            print(f"[Indexer] Loaded {len(active_files)} Files in {time_elapsed:.2f}s")
 
-            # find paths which are no longer active (deleted or renamed)
-            removed_paths = [path for path in hash_file.keys() if path not in active_files] 
-            if removed_paths:
-                was_updated = True
+            # find filepaths which are no longer active (deleted or renamed)   
+            removed_paths = [path for path in hash_file.keys() if path not in active_files]
+            paths_to_delete.extend(removed_paths)
+
+            # if false, we skip step of rewriting the tree at the end
+            was_updated = len(docs_to_summarize) > 0 or len(paths_to_delete) > 0
+
+            time_start = time.time()
+            # remove any old embeddings (file was deleted/ updated)
+            if paths_to_delete:
                 print(f"[Indexer] Removing {len(removed_paths)} inactive files from Chroma")
-                for removed_file in removed_paths:
-                    try:
-                        await asyncio.to_thread(self.vector_store._collection.delete, where={"source": removed_file})
-                    except Exception:
-                        pass  # ignore error thats thrown in case the chunks were already deleted 
-                    hash_file.pop(removed_file)
-            
+                try:
+                    # batch using $in isntead of loop
+                    await asyncio.to_thread(
+                        self.vector_store._collection.delete, 
+                        where={"source": {"$in": paths_to_delete}}
+                    )
+                except Exception as e:
+                    pass
+
+                # clean up hashfile
+                for path in removed_paths:
+                    hash_file.pop(path, None)
+
+            time_elapsed = time.time() - time_start
+            print(f"[Indexer] Deleted chunks of {len(removed_paths)} inactive files in {time_elapsed:.2f}s")
+
+
+            time_start = time.time()
+            # concurrent API requests to speed up, set semaphore to num of concurrent requests allowed
+            if docs_to_summarize:
+                print(f"[Indexer] Total of {len(docs_to_summarize)} modified/ new files detected")
+                file_summarizer = _HINDEX_SUMMARY_PROMPT | self.llm
+                sem = asyncio.Semaphore(10)
+
+                async def process_doc(task_data):
+                    doc, file_path_str, _, _, _ = task_data
+                    
+                    async with sem:
+                        if len(doc.page_content) == 0:
+                            summary_result = "Empty File"
+                        else:
+                            summary_response = await file_summarizer.ainvoke({
+                                "filepath": file_path_str, 
+                                "content": doc.page_content[:1500] 
+                            })
+                            summary_result = summary_response.content
+                    
+                    return task_data, summary_result
+                
+
+                tasks = [process_doc(data) for data in docs_to_summarize]
+                results = await async_tqdm.gather(*tasks, desc="Summarizing Files")
+
+                # parse reuslts amd gather in list to add all at once
+                for task_data, summary_result in results:
+                    doc, file_path_str, root_str, relative_path_tuple, content_hash = task_data
+                    
+                    # update hash
+                    hash_file[file_path_str] = {"hash": content_hash, "summary": summary_result}
+                    self._insert_into_tree(tree[root_str]["children"], relative_path_tuple, summary_result)
+
+                    # update metadata and split into chunks
+                    doc.metadata["file_summary"] = summary_result
+                    doc.metadata["type"] = "file"
+                    doc.metadata["source"] = file_path_str
+                    new_chunked_docs.extend(self.text_splitter.split_documents([doc]))
+            time_elapsed = time.time() - time_start
+            print(f"[Indexer] Summarized and gathered results of {len(docs_to_summarize)} files in {time_elapsed:.2f}s")
+
+            time_start = time.time()
             if was_updated:
                 # save json tree
                 with open(self.summary_tree_path, "w", encoding="utf-8") as f:
@@ -173,10 +200,24 @@ class HierarchicalIndexer:
                 with open(self.file_hashes_path, "w", encoding="utf-8") as f:
                     json.dump(hash_file, f, indent=2, ensure_ascii=False)
                 print(f"[Indexer] Status file saved to {self.file_hashes_path}")
+
                 if new_chunked_docs:
-                    # save chunks to chroma
-                    await self.vector_store.aadd_documents(new_chunked_docs)
+                    print(f"[Indexer] Saving {len(new_chunked_docs)} embeddings to chroma")
+                    
+                    batch_size = 50
+                    batches = [
+                        new_chunked_docs[i : i + batch_size] 
+                        for i in range(0, len(new_chunked_docs), batch_size)
+                    ]
+
+                    save_tasks = [self.vector_store.aadd_documents(batch) for batch in batches]
+                    await async_tqdm.gather(*save_tasks, desc="Saving to ChromaDB")
+                    
                     print("[Indexer] Updated chunks saved to Chroma")
             else:
                 print("[Indexer] No change detected")
+            time_elapsed = time.time() - time_start
+            print(f"[Indexer] Updated the DB and the jsons {time_elapsed:.2f}s")
+
+        return tree
 

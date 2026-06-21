@@ -51,6 +51,7 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "websockify",
+    "markitdown[all]",
     
     # Dev tools
     "pytest>=7.4",
