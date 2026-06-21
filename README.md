@@ -43,7 +43,6 @@
   - Task Settings: (?) permissions? am i allowed to delete? etc. idk
 
 #### Memory & RAG
-- more efficient indexing 
 
 #### Agents
 - Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
