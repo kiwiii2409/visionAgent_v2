@@ -14,7 +14,8 @@ def get_program_tools():
     @tool
     async def launch_application_tool(app_command: str) -> str:
         """
-        lauch desktop applications by their name e.g. 'firefox', 'thunderbird'
+        Launch a desktop application. Use the parameter 'app_command' with the application name (e.g. 'firefox', 'thunderbird').
+        Example: launch_application_tool(app_command='firefox')
         """
         try:
             env = os.environ.copy()

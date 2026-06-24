@@ -44,29 +44,23 @@ class ToolCallSchema(BaseModel):
     tool_args: dict = Field(default_factory=dict, description="Parameters for the tool. Use 'element_id' instead of exact (x,y)-pixel-values for UI interactions.  Empty if tool_name is 'done'.")
 
 class VisionActionSchema(BaseModel):
-    """Structured output from VLM: a sequence of actions to take on the desktop."""
-    thought: str = Field(description="Brief reasoning about what you see and why these actions are the logical next steps. Max 3 sentences.")
-    actions: List[ToolCallSchema] = Field(description="List of tools (max. 4) to execute in sequence. Only chain tools which don't trigger reactions in the UI")
+    """Structured output from VLM: whether the goal is done, reasoning, and next actions."""
+    thought: str = Field(description="Brief reasoning about current screen state, what has been done, and the next logical step. Max 3 sentences.")
+    done: bool = Field(description="True if the goal is fully achieved based on visual evidence on screen. False if more actions are needed.")
+    actions: List[ToolCallSchema] = Field(default_factory=list, description="Next tools to execute. Empty if done=True. Max 4.")
+    scratchpad: str | None = Field(default=None, description="Important facts to remember across steps (prices, names, URLs, emails). Write key=value pairs like 'BTC=53195.36 EUR'. This persists and will be shown to you next iteration.")
 
 
-class VisionEvaluationSchema(BaseModel):
-    reasoning: str = Field(description="Brief explanation of what visual evidence confirms or refutes completion. Max 2 sentences.")
-    is_subgoal_achieved: bool = Field(description="True if the visual evidence on the screen confirms the current subgoal is achieved, False otherwise.")
 
-class MacroPlanSchema(BaseModel):
-    """Structured output from VLM: A high-level sequence of subgoals to achieve a task."""
-    subgoals: List[str] = Field(description="A sequential list of textual subgoals required to complete the main goal.")
 
 class VisionState(TypedDict):
     goal: str
-    subgoals: List[str]               
-    current_subgoal_index: int        
     screenshot_b64: str | None
     coordinate_dict: Dict | None
     action_history: Annotated[list, operator.add]
+    scratchpad: str | None      # Cross-iteration working memory (facts, prices, names)
     current_plan: Dict | None
     done: bool
-    subgoal_done: bool                
     iterations: int
     max_iterations: int
     error: str | None

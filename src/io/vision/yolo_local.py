@@ -138,7 +138,7 @@ class AsyncYoloParser:
                 print(f"Annotated image saved to: {output_path}")
 
             buffered = io.BytesIO()
-            annotated_image.save(buffered, format="JPEG", quality=100)
+            annotated_image.save(buffered, format="JPEG", quality=85)
             b64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
 
             elapsed = time.time() - t0

@@ -73,6 +73,7 @@ async def stream_vision_agent(prompt: str, use_websearch: bool, registry: Servic
         "screenshot_b64": None,
         "coordinate_dict": None,
         "action_history": [],
+        "scratchpad": None,
         "current_plan": None,
         "done": False,
         "iterations": 0,

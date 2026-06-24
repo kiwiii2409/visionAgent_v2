@@ -38,6 +38,7 @@ from src.agents.vision_graph import VisionGraphBuilder
 
 from src.io.vision.yolo_client import AsyncYoloClient
 from src.io.vision.yolo_local import AsyncYoloParser
+from src.retrieval.skill_manager import SkillManager
 
 # tools
 from src.tools.ui_tools import get_ui_tools
@@ -84,6 +85,7 @@ class ServiceRegistry:
 
         await self._init_mcp()
         self.all_tools += self.mcp_tools
+        self.skill_manager.build_index()
         self._build_agents()
         self._initialized = True
         
@@ -208,6 +210,12 @@ class ServiceRegistry:
             persist_directory=self.settings.chroma_db_path
         )
 
+        self.skill_manager = SkillManager(
+            skills_dir=str(PROJECT_ROOT / "skills"),
+            embeddings=self.embeddings,
+            chroma_path=self.settings.chroma_db_path,
+        )
+
     def _init_services(self) -> None:
         """Register all controllers + the indexer"""
         self.controller = IOController()
@@ -259,6 +267,7 @@ class ServiceRegistry:
             mcp_tools=self.all_tools,
             screen_capture=self.screen_capture,
             preprocessor=self.preprocessor,
+            skill_manager=self.skill_manager,
             max_iterations=self.settings.max_iterations,
         )
         self.vision_agent = self.vision_builder.build()
