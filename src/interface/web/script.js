@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentAbortController = new AbortController();
 
         try {
-            const response = await fetch("/api/chat", {
+            const response = await fetch("/api/task", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 

@@ -4,15 +4,30 @@ from ultralytics import YOLO
 import asyncio
 import base64
 import io
+import os 
+from typing import Dict, Optional, Tuple
+import shutil
 
-class YoloParser:
-    def __init__(self, model_path: str):
+class AsyncYoloParser:
+    def __init__(self, model_path: str, log_dir: Optional[str] = "data/log_images"):
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model = YOLO(model_path)
+
+
+        self.log_dir = log_dir
+        self.image_counter = 0
+        
+        # Setup and wipe the logging directory on restart
+        if self.log_dir:
+            if os.path.exists(self.log_dir):
+                shutil.rmtree(self.log_dir)
+            os.makedirs(self.log_dir, exist_ok=True)
+            print(f"[YoloClient] Log directory reset at: {self.log_dir}")
+            
         print(f"YoloParser initialized on {self.device}!")
 
-    async def annotate_image(self, image_input, output_path=None, box_threshold=0.01, iou_threshold=0.1):
+    async def query(self, image_input, output_path=None, box_threshold=0.01, iou_threshold=0.1):
         """
         Runs YOLO inference on an image, draws bounding boxes with IDs, 
         and returns the annotated PIL Image.
@@ -49,10 +64,9 @@ class YoloParser:
         draw = ImageDraw.Draw(annotated_image)
         
         box_overlay_ratio = max(w, h) / 3200
-        thickness = max(int(3 * box_overlay_ratio), 2)
-        
-        text_padding = max(int(5 * box_overlay_ratio * 2), 2)
-        font_size = max(int(30 * box_overlay_ratio * 2), int(12 * 2))
+        thickness = max(int(4 * box_overlay_ratio), 3)       # Thicker box borders
+        text_padding = max(int(4 * box_overlay_ratio), 4)    # More breathing room inside the label
+        font_size = max(int(30 * box_overlay_ratio), 28)
         
         try:
             font = ImageFont.truetype("arial.ttf", size=font_size)
@@ -65,55 +79,64 @@ class YoloParser:
             x1, y1, x2, y2 = box
             button_id = str(i)
             
-
             center_x = int((x1 + x2) / 2)
             center_y = int((y1 + y2) / 2)
-
             button_coordinates[button_id] = [center_x, center_y]
-
 
             draw.rectangle([x1, y1, x2, y2], outline="green", width=thickness)
             
-            # Calculate text background size
             text_bbox = draw.textbbox((0, 0), button_id, font=font)
             text_width = text_bbox[2] - text_bbox[0]
             text_height = text_bbox[3] - text_bbox[1]
             
-            # Position the ID tag above the box (or inside if at the very top edge)
+            # Position the ID tag inside the top-right corner of the box
+            label_left_edge = x2 - text_width - (text_padding * 2)
+            
+            # Ensure the label doesn't push past the left edge of a very narrow bounding box
+            label_left_edge = max(label_left_edge, x1)
+            
             label_bg = [
-                x1, 
-                y1 - text_height - (text_padding * 2), 
-                x1 + text_width + (text_padding * 2), 
-                y1
+                label_left_edge,                           # Left edge
+                y1,                                        # Top edge
+                x2,                                        # Right edge
+                y1 + text_height + (text_padding * 2)      # Bottom edge
             ]
             
-            # Handle edge case where box is at the absolute top of the image
-            if label_bg[1] < 0:
-                label_bg = [x1, y1, x1 + text_width + (text_padding * 2), y1 + text_height + (text_padding * 2)]
-                draw.rectangle(label_bg, fill="green")
-                draw.text((x1 + text_padding, y1 + text_padding), button_id, fill="white", font=font)
-            else:
-                draw.rectangle(label_bg, fill="green")
-                draw.text((x1 + text_padding, label_bg[1] + text_padding), button_id, fill="white", font=font)
+            # Draw the background rectangle and the text
+            draw.rectangle(label_bg, fill="green")
+            draw.text(
+                (label_left_edge + text_padding, y1 + text_padding), 
+                button_id, 
+                fill="white", 
+                font=font
+            )
 
-        
-        if output_path: # useful for checking quality
-            annotated_image.save(output_path)
-            print(f"Annotated image saved to: {output_path}")
+
 
         buffered = io.BytesIO()
         annotated_image.save(buffered, format="JPEG", quality=100) 
         b64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-
-
+        if self.log_dir and b64_image:
+                try:
+                    clean_b64 = b64_image.split(",")[-1] if "," in b64_image else b64_image
+                    image_data = base64.b64decode(clean_b64)
+                    
+                    file_path = os.path.join(self.log_dir, f"{self.image_counter}.png")
+                    with open(file_path, "wb") as f:
+                        f.write(image_data)
+                    
+                    self.image_counter += 1
+                except Exception as e:
+                    print(f"[YoloClient] Failed to save image locally: {e}")
         return b64_image, button_coordinates
+
     
 
 
 
 if __name__ == "__main__":
     async def test_yolo():
-        parser = YoloParser(model_path="data/weights/yolo/model.pt")
+        parser = AsyncYoloParser(model_path="data/weights/yolo/model.pt")
         import time
         start_time = time.time()
         b64_image, button_coords = await parser.annotate_image(

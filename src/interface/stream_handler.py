@@ -2,27 +2,32 @@ import json
 import asyncio
 from src.core.registry import ServiceRegistry
 
-# async def generate_chat_stream(prompt: str, registry: ServiceRegistry):
-#     """Routes the query and yields Server-Sent Events (JSON lines) for the frontend."""
-#     from src.agents.task_router import route_query
+async def generate_chat_stream(prompt: str, use_websearch:bool, registry: ServiceRegistry):
+    """Routes the query and yields Server-Sent Events (JSON lines) for the frontend."""
+    from src.agents.task_router import route_query
+    print("asdfasdfasdf")
+    task_type = await route_query(prompt, registry.llm)
+    yield json.dumps({"type": "init", "mode": task_type}) + "\n"
     
-#     task_type = await route_query(prompt, registry.llm)
-#     yield json.dumps({"type": "init", "mode": task_type}) + "\n"
-    
-#     try:
-#         async with asyncio.timeout(300):
-#             if task_type == "question":
-#                 async for chunk in _stream_search_agent(prompt, registry):
-#                     yield chunk
-#             else:
-#                 async for chunk in _stream_vision_agent(prompt, registry):
-#                     yield chunk
-#     except asyncio.TimeoutError:
-#         yield json.dumps({"type": "error", "content": "Agent timed out after 5 minutes."}) + "\n"
-#     except Exception as e:
-#         yield json.dumps({"type": "error", "content": f"Agent Error: {str(e)}"}) + "\n"
+    try:
+        async with asyncio.timeout(300):
+            if task_type == "question":
+                print("ccccasdfasdfasdf")
 
-async def _stream_search_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
+                async for chunk in stream_search_agent(prompt, use_websearch, registry):
+                    yield chunk
+            else:
+                print(" bbbbbbfasdfasdf")
+
+                async for chunk in stream_vision_agent(prompt, use_websearch, registry):
+                    yield chunk
+    except asyncio.TimeoutError:
+        yield json.dumps({"type": "error", "content": "Agent timed out after 5 minutes."}) + "\n"
+    except Exception as e:
+        yield json.dumps({"type": "error", "content": f"Agent Error: {str(e)}"}) + "\n"
+
+
+async def stream_search_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
     initial_state = {
         "query": prompt,
         "context_blocks": [],
@@ -63,7 +68,7 @@ async def _stream_search_agent(prompt: str, use_websearch:bool, registry: Servic
                 if answer := state_update.get("final_answer", ""):
                     yield json.dumps({"type": "msg", "content": answer, "sources": state_update.get("sources", [])}) + "\n"
 
-async def _stream_vision_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
+async def stream_vision_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
     vision_state = {
         "goal": prompt,
         "screenshot_b64": None,

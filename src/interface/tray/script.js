@@ -83,6 +83,9 @@ async function sendMessage() {
     currentAbortController = new AbortController();
     setButtonState(true);
 
+    const websearchToggle = document.getElementById('websearchToggle');
+    const useWebsearch = websearchToggle ? websearchToggle.checked : false;
+
     const userBubble = createMessageBubble('user');
     userBubble.textContent = text;
     
@@ -109,10 +112,10 @@ async function sendMessage() {
     let currentToolLi = null;
 
     try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/api/auto', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text }),
+            body: JSON.stringify({ query: text, use_websearch: useWebsearch}),
             signal: currentAbortController.signal
         });
 

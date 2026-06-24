@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from src.core.registry import ServiceRegistry
-from src.interface.stream_handler import _stream_search_agent, _stream_vision_agent
+from src.interface.stream_handler import stream_search_agent, stream_vision_agent, generate_chat_stream
 
 registry = ServiceRegistry()
 
@@ -53,10 +53,10 @@ async def read_tray_index():
     return FileResponse(os.path.join(TRAY_DIR, "tray_index.html"))
 
 
-@app.post("/api/chat")
-async def chat_endpoint(req: ChatRequest):
+@app.post("/api/task")
+async def task_endpoint(req: ChatRequest):
     return StreamingResponse(
-        _stream_vision_agent(req.query, req.use_websearch, registry),
+        stream_vision_agent(req.query, req.use_websearch, registry),
         media_type="text/plain"
     )
 
@@ -64,7 +64,7 @@ async def chat_endpoint(req: ChatRequest):
 @app.post("/api/search")
 async def execute_search(req: ChatRequest):
     return StreamingResponse(
-        _stream_search_agent(req.query, req.use_websearch,registry),
+        stream_search_agent(req.query, req.use_websearch,registry),
         media_type="text/plain"
     )
 
@@ -76,6 +76,13 @@ async def serve_local_file(path: str):
         raise HTTPException(status_code=404, detail="File not found on local system.")
     
     return FileResponse(target_path)
+
+@app.post("/api/auto")
+async def tray_chat_endpoint(req: ChatRequest):
+    return StreamingResponse(
+        generate_chat_stream(req.query, req.use_websearch, registry),
+        media_type="text/plain"
+    )
 
 @app.post("/api/index")
 async def index_endpoint(req: IndexRequest):

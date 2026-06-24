@@ -87,13 +87,14 @@ class VisionGraphBuilder:
         #         except Exception as e:
         #             print(f"[Vision] Warning: Could not open OS menu: {e}")
 
-        await asyncio.sleep(3) 
 
         img: Image.Image = await asyncio.to_thread(self.capture.full_screen)
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=100)
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
         if self.preprocessor:
+            await asyncio.sleep(10) 
+
             b64_annotated, coordinate_dict = await self.preprocessor.query(b64)
             return {"screenshot_b64": b64_annotated, "coordinate_dict": coordinate_dict}
         

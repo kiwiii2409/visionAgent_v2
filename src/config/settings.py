@@ -19,19 +19,20 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
 
-    enable_preprocessing: bool = True
+    enable_preprocessing: Literal["local", "server", "none"] = "local"
     preprocessing_base_url: str = "http://127.0.0.1:8020"
+    preporcessing_model_path: str = "data/weights/yolo/model.pt"
 
     
 
     # common configs:
     # local, tray, enable_vnc = false
     # virtual, web, enable_vnc = true
-    display_mode: Literal["local", "virtual", "docker"] = "virtual"
-    ui_mode: Literal["tray", "web"] = "web"
+    display_mode: Literal["local", "virtual", "docker"] = "local"
+    ui_mode: Literal["tray", "web"] = "tray"
     virtual_resolution: Tuple[int, int] = (1920, 1080)
     
-    enable_vnc: bool = True 
+    enable_vnc: bool = False 
     vnc_port: int = 5900
     vnc_websocket_port: int = 6080
     vnc_websocket_path: str = "/"
