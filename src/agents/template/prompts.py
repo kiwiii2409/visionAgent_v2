@@ -13,6 +13,19 @@ def get_evaluation_prompt() -> ChatPromptTemplate:
         "User Query: {query}\n\nRetrieved Context:\n{context}\n\n"
         "Does the retrieved context contain enough specific information to fully and accurately answer the user's query? "
         "Do not guess. If critical details are missing, say it is insufficient."
+        "If the local context is completely useless or the user's query is clearly about current events/external facts, set 'needs_websearch' to true to abandon local files and search the internet."
+    )
+
+def get_web_selection_prompt():
+    return ChatPromptTemplate.from_template(
+        """You are an expert researcher. 
+        You are trying to answer the following query: "{query}"
+
+        Here are the snippets returned from a web search:
+        {search_results}
+
+        Your task is to review these search results and select up to 2 of the most promising URLs that are most likely to contain the detailed answer to the query.
+        Return ONLY the exact URLs."""
     )
 
 def get_file_selection_prompt() -> ChatPromptTemplate:

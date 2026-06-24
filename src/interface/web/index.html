@@ -84,12 +84,9 @@
             <p id="searchIndexStatus" class="status-msg"></p>
           </div>
 
-          <div class="setting-group spaced-group">
-            <label>Active Agent</label>
-            <select class="mode-select" id="searchModeSelect">
-              <option>visionAgent_v2 (Default)</option>
-              <option>Search Agent</option>
-            </select>
+          <div class="setting-group spaced-group" style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="searchWebToggle" style="cursor: pointer;">Use Websearch</label>
+            <input type="checkbox" id="searchWebToggle" style="transform: scale(1.3); cursor: pointer;" />
           </div>
         </div>
       </div>
@@ -159,12 +156,9 @@
                 <p id="taskIndexStatus" class="status-msg"></p>
               </div>
 
-              <div class="setting-group spaced-group">
-                <label>Active Agent</label>
-                <select class="mode-select" id="taskModeSelect">
-                  <option>visionAgent_v2 (Default)</option>
-                  <option>Search Agent</option>
-                </select>
+              <div class="setting-group spaced-group" style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="taskWebToggle" style="cursor: pointer;">Use Websearch</label>
+                <input type="checkbox" id="taskWebToggle" style="transform: scale(1.3); cursor: pointer;" />
               </div>
             </div>
           </aside>

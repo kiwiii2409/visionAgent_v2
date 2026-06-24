@@ -1,9 +1,14 @@
 import os
 import asyncio
+import json
+
 from pathlib import Path
 from langchain_core.tools import tool
 
 from src.retrieval.file_loader import AsyncFileLoader
+from src.retrieval.web_search import asearch, aretrieve
+
+
 
 def get_general_tools():
 
@@ -24,7 +29,27 @@ def get_general_tools():
         await asyncio.sleep(safe_seconds)
         return f"Successfully waited for {safe_seconds} seconds."
 
-
+    @tool
+    async def exploratory_search_tool(query:str, max_results:int=5) -> str:
+        """
+        Use this tool FIRST when you need to search the internet for current events, facts, or external knowledge. 
+        It performs a web search and returns a list of results containing the title, a brief snippet, and the URL.
+        
+        Workflow: Evaluate the snippets returned by this tool. If the snippets contain enough information to answer the user, stop here. If you need deeper details, identify the most promising URL from these results and pass it into the `read_website_tool` to read the full page content.
+        """
+        result = await asearch(query, max_results)
+        return result
+    
+    @tool
+    async def read_website_tool(url:str) -> str:
+        """
+        Use this tool to read the full text content of a specific webpage. 
+        
+        Workflow: You should typically use this tool AFTER using the `exploratory_websearch_tool`. Do not guess URLs. Take the exact URL/link provided in the search results and pass it into this tool to extract the complete article or webpage data.
+        """
+        result = await aretrieve(url)
+        return result
+        
 
 
     @tool
@@ -37,7 +62,7 @@ def get_general_tools():
             return f"Error: File not found at '{path}'"
 
         try:
-            file_loader = AsyncFileLoader(concurrency_limit=5)
+            file_loader = AsyncFileLoader(concurreny_limit=3)
             doc = await file_loader.load_single_file(Path(path))
             if doc:
                 return doc.page_content
@@ -47,4 +72,4 @@ def get_general_tools():
         except Exception as e:
             return f"Error reading file '{path}': {str(e)}"
         
-    return [wait_tool, read_document_tool]
+    return [wait_tool, read_document_tool,exploratory_search_tool, read_website_tool]

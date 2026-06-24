@@ -22,7 +22,7 @@ from src.core.registry import ServiceRegistry
 #     except Exception as e:
 #         yield json.dumps({"type": "error", "content": f"Agent Error: {str(e)}"}) + "\n"
 
-async def _stream_search_agent(prompt: str, registry: ServiceRegistry):
+async def _stream_search_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
     initial_state = {
         "query": prompt,
         "context_blocks": [],
@@ -32,7 +32,8 @@ async def _stream_search_agent(prompt: str, registry: ServiceRegistry):
         "sources": [],
         "file_summaries": {},            
         "iterations": 0,
-        "max_iterations": registry.settings.max_search_iterations
+        "max_iterations": registry.settings.max_search_iterations,
+        "use_websearch": use_websearch
     }
     
     async for event in registry.search_agent.astream(initial_state):
@@ -62,7 +63,7 @@ async def _stream_search_agent(prompt: str, registry: ServiceRegistry):
                 if answer := state_update.get("final_answer", ""):
                     yield json.dumps({"type": "msg", "content": answer, "sources": state_update.get("sources", [])}) + "\n"
 
-async def _stream_vision_agent(prompt: str, registry: ServiceRegistry):
+async def _stream_vision_agent(prompt: str, use_websearch:bool, registry: ServiceRegistry):
     vision_state = {
         "goal": prompt,
         "screenshot_b64": None,
@@ -73,6 +74,7 @@ async def _stream_vision_agent(prompt: str, registry: ServiceRegistry):
         "iterations": 0,
         "max_iterations": registry.settings.max_iterations,
         "error": None,
+        "use_websearch": use_websearch
     }
 
     async for event in registry.vision_agent.astream(vision_state):

@@ -30,6 +30,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchSettingsOverlay = document.getElementById("search-settings-overlay");
     const closeSearchSettingsBtn = document.getElementById("close-search-settings");
 
+
+    const taskWebToggle = document.getElementById("taskWebToggle");
+    const searchWebToggle = document.getElementById("searchWebToggle");
+
     // ==============================================
     // 2. Interface Toggling Logic
     // ==============================================
@@ -67,7 +71,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/api/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query })
+                body: JSON.stringify({ 
+                    query: query, 
+                    use_websearch: searchWebToggle.checked 
+                })
             });
             
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -102,13 +109,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
                             // Render Documents
                             if (data.sources && data.sources.length > 0) {
-                                docsList.innerHTML = data.sources.map(doc => `
-                                    <div class="doc-result">
-                                        <div class="doc-path">${doc.path || doc.source || ''}</div>
-                                    <a href="/api/file?path=${encodeURIComponent(doc.path || doc.source)}" target="_blank" rel="noopener noreferrer" class="doc-title">${doc.name || doc.path || 'Document'}</a>
-                                        <div class="doc-summary">${doc.summary || ''}</div>
-                                    </div>
-                                `).join('');
+                                docsList.innerHTML = data.sources.map(doc => {
+                                    const pathStr = doc.path || doc.source || '';
+                                    
+                                    // Check if the path is a web URL or a local file
+                                    const isWebUrl = pathStr.startsWith('http://') || pathStr.startsWith('https://');
+                                    const linkHref = isWebUrl 
+                                        ? pathStr 
+                                        : `/api/file?path=${encodeURIComponent(pathStr)}`;
+
+                                    return `
+                                        <div class="doc-result">
+                                            <div class="doc-path">${pathStr}</div>
+                                            <a href="${linkHref}" target="_blank" rel="noopener noreferrer" class="doc-title">
+                                                ${doc.name || pathStr || 'Document'}
+                                            </a>
+                                            <div class="doc-summary">${doc.summary || ''}</div>
+                                        </div>
+                                    `;
+                                }).join('');
                             } else {
                                 docsList.innerHTML = `<p style="color: #6b7280;">No explicit documents cited.</p>`;
                             }
@@ -182,7 +201,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query: prompt }),
+                body: JSON.stringify({ 
+                    query: prompt,
+                    use_websearch: taskWebToggle.checked
+                }),
                 signal: currentAbortController.signal
             });
 
@@ -281,8 +303,8 @@ document.addEventListener("DOMContentLoaded", () => {
     searchSettingsOverlay.addEventListener("click", () => toggleSettingsDrawer(false));
 
     // 5B. Syncing Agent Selection state between Task view and Search View
-    taskModeSelect.addEventListener("change", (e) => searchModeSelect.value = e.target.value);
-    searchModeSelect.addEventListener("change", (e) => taskModeSelect.value = e.target.value);
+    taskWebToggle.addEventListener("change", (e) => searchWebToggle.checked = e.target.checked);
+    searchWebToggle.addEventListener("change", (e) => taskWebToggle.checked = e.target.checked);
 
     // 5C. Shared Reusable Indexing Logic
    const setupIndexer = (inputId, btnId, statusId) => {

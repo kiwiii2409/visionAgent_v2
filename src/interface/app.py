@@ -32,6 +32,7 @@ app.mount("/tray_static", StaticFiles(directory=TRAY_DIR, html=False), name="tra
 
 class ChatRequest(BaseModel):
     query: str
+    use_websearch: bool = False  
 
 class IndexRequest(BaseModel):
     folder_path: str
@@ -55,15 +56,15 @@ async def read_tray_index():
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     return StreamingResponse(
-        _stream_vision_agent(req.query, registry),
+        _stream_vision_agent(req.query, req.use_websearch, registry),
         media_type="text/plain"
     )
 
 
 @app.post("/api/search")
-async def execute_search(request: ChatRequest):
+async def execute_search(req: ChatRequest):
     return StreamingResponse(
-        _stream_search_agent(request.query, registry),
+        _stream_search_agent(req.query, req.use_websearch,registry),
         media_type="text/plain"
     )
 
