@@ -4,13 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vision Agent Tray</title>
-    <link rel="stylesheet" href="/tray_static/style.css" />    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="/tray_static/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
   <body>
     <div class="app-container">
-      
       <header class="app-header">
         <h1>Local Agent</h1>
         <button id="settingsBtn" class="icon-btn">
@@ -22,18 +24,20 @@
         <div class="setting-group">
           <label for="folderInput">Index New Folder</label>
           <div class="input-group">
-            <input type="text" id="folderInput" placeholder="e.g., ./data/docs" />
+            <input
+              type="text"
+              id="folderInput"
+              placeholder="e.g., ./data/docs"
+            />
             <button id="indexBtn">Index</button>
           </div>
           <p id="indexStatus" class="status-msg"></p>
         </div>
-
-        <div class="setting-group spaced-group">
-          <label>Active Agent</label>
-          <select class="mode-select">
-            <option>visionAgent_v2 (Default)</option>
-            <option>Search Agent</option>
-          </select>
+        <div class="setting-item">
+          <label for="websearchToggle" class="flex items-center cursor-pointer">
+            <input type="checkbox" id="websearchToggle" class="mr-2" />
+            <span>Enable Web Search</span>
+          </label>
         </div>
       </div>
 
@@ -48,15 +52,18 @@
 
         <div class="chat-input-area">
           <div class="input-wrapper">
-            <textarea id="promptInput" placeholder="Type your prompt here..." rows="1"></textarea>
+            <textarea
+              id="promptInput"
+              placeholder="Type your prompt here..."
+              rows="1"
+            ></textarea>
             <button id="actionBtn" class="send-btn">
               <i id="actionIcon" class="fas fa-paper-plane"></i>
             </button>
           </div>
         </div>
       </main>
-
     </div>
-    <script src="/tray_static/script.js"></script>  
+    <script src="/tray_static/script.js"></script>
   </body>
 </html>

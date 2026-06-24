@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     promptInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); 
+            e.preventDefault();
             if (!isExecuting) handleAction();
         }
     });
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function toggleSettings() {
     const panel = document.getElementById('settingsPanel');
     const btn = document.getElementById('settingsBtn');
-    
+
     panel.classList.toggle('hidden');
     btn.classList.toggle('active');
 }
@@ -43,13 +43,13 @@ function setButtonState(executing) {
     isExecuting = executing;
     const btn = document.getElementById('actionBtn');
     const icon = document.getElementById('actionIcon');
-    
+
     if (executing) {
         btn.classList.add('stop-mode');
         icon.className = 'fas fa-square';
     } else {
         btn.classList.remove('stop-mode');
-        icon.className = 'fas fa-paper-plane'; 
+        icon.className = 'fas fa-paper-plane';
     }
 }
 
@@ -64,14 +64,14 @@ function createMessageBubble(sender) {
     const chatHistory = document.getElementById('chatHistory');
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${sender}`;
-    
+
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    
+
     msgDiv.appendChild(contentDiv);
     chatHistory.appendChild(msgDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
-    
+
     return contentDiv;
 }
 
@@ -83,9 +83,12 @@ async function sendMessage() {
     currentAbortController = new AbortController();
     setButtonState(true);
 
+    const websearchToggle = document.getElementById('websearchToggle');
+    const useWebsearch = websearchToggle ? websearchToggle.checked : false;
+
     const userBubble = createMessageBubble('user');
     userBubble.textContent = text;
-    
+
     promptInput.value = '';
     promptInput.style.height = 'auto';
     promptInput.focus();
@@ -102,17 +105,17 @@ async function sendMessage() {
         </details>
         <div class="agent-response"></div>
     `;
-    
+
     const thinkingToggle = systemBubble.querySelector('.agent-thinking');
     const thinkingSteps = systemBubble.querySelector('.thinking-steps');
     const responseDiv = systemBubble.querySelector('.agent-response');
     let currentToolLi = null;
 
     try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/api/auto', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text }),
+            body: JSON.stringify({ query: text, use_websearch: useWebsearch }),
             signal: currentAbortController.signal
         });
 
@@ -123,29 +126,29 @@ async function sendMessage() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
             buffer += decoder.decode(value, { stream: true });
             let lines = buffer.split('\n');
-            buffer = lines.pop(); 
+            buffer = lines.pop();
 
             for (let line of lines) {
                 if (!line.trim()) continue;
                 try {
                     const data = JSON.parse(line);
-                    
+
                     if (data.type === "init") {
                         const li = document.createElement('li');
                         li.innerHTML = `<span style="color: var(--primary);">System routing to <b>${data.mode.toUpperCase()}</b> execution mode.</span>`;
                         thinkingSteps.appendChild(li);
-                    } 
+                    }
                     else if (data.type === "tool") {
                         currentToolLi = document.createElement('li');
                         currentToolLi.innerHTML = `Executing: <code>${data.name}</code>`;
                         thinkingSteps.appendChild(currentToolLi);
-                    } 
+                    }
                     else if (data.type === "tool_done" && currentToolLi) {
                         currentToolLi.innerHTML += ` (Completed)`;
-                    } 
+                    }
                     else if (data.type === "msg") {
                         let htmlContent = marked.parse(data.content);
                         if (data.sources && data.sources.length > 0) {
@@ -158,7 +161,7 @@ async function sendMessage() {
                         }
                         responseDiv.innerHTML = htmlContent;
                         thinkingToggle.removeAttribute('open');
-                    } 
+                    }
                     else if (data.type === "error") {
                         responseDiv.innerHTML += `<br><span class="text-error">Error: ${data.content}</span>`;
                     }
@@ -219,7 +222,7 @@ async function indexFolder() {
             setTimeout(() => {
                 folderInput.classList.remove('input-error');
                 folderInput.placeholder = originalPlaceholder;
-                folderInput.value = originalValue; 
+                folderInput.value = originalValue;
             }, 4000);
         }
     } catch (e) {

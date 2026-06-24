@@ -3,73 +3,166 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vision Agent Workspace</title>
+    <title>Omni Workspace</title>
     <link rel="stylesheet" href="/static/style.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
   <body>
-    <div class="workspace-desk">
-      <div class="app-container">
-        
-        <main class="chat-main">
-          <header class="chat-header">
-            <h1>Local Agent</h1>
-          </header>
+    <div id="search-interface">
+      <div class="search-header">
+        <div class="logo">
+          <span style="font-weight: bold; font-family: sans-serif">
+            <span style="color: #4285f4">S</span
+            ><span style="color: #ea4335">e</span
+            ><span style="color: #fbbc05">a</span
+            ><span style="color: #4285f4">r</span
+            ><span style="color: #34a853">c</span
+            ><span style="color: #ea4335">h</span
+            ><span style="color: #4285f4">A</span
+            ><span style="color: #fbbc05">g</span
+            ><span style="color: #4285f4">e</span
+            ><span style="color: #ea4335">n</span
+            ><span style="color: #34a853">t</span>
+          </span>
+        </div>
 
-          <div class="chat-history" id="chatHistory">
-            <div class="message system">
-              <div class="message-content">
-                Ask a question or assign a task to begin.
-              </div>
+        <div class="search-bar-container">
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="Search your local context..."
+          />
+        </div>
+
+        <div class="search-buttons">
+          <button id="btn-search" class="search-btn">Search</button>
+          <button id="btn-task-mode" class="search-btn">Task Mode</button>
+        </div>
+      </div>
+
+      <div id="results-container" style="display: none">
+        <div class="ai-overview">
+          <h2>AI Overview</h2>
+          <div id="ai-text" class="ai-text agent-response"></div>
+        </div>
+        <div id="docs-list"></div>
+      </div>
+
+      <button
+        id="search-settings-btn"
+        class="floating-settings-btn"
+        title="Configuration"
+      >
+        <i class="fas fa-cog"></i>
+      </button>
+
+      <div id="search-settings-overlay" class="search-settings-overlay"></div>
+
+      <div id="search-settings-drawer" class="search-settings-drawer">
+        <div class="drawer-header">
+          <h2>Configuration</h2>
+          <button id="close-search-settings" class="close-drawer-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="settings-content">
+          <div class="setting-group">
+            <label for="searchFolderInput">Index New Folder</label>
+            <div class="input-group">
+              <input
+                type="text"
+                id="searchFolderInput"
+                placeholder="e.g., ./data/docs"
+              />
+              <button id="searchIndexBtn">Index</button>
             </div>
+            <p id="searchIndexStatus" class="status-msg"></p>
           </div>
 
-          <div class="chat-input-area">
-            <div class="input-wrapper">
-              <textarea id="promptInput" placeholder="Type your prompt here..." rows="1"></textarea>
-              <button id="actionBtn" class="send-btn">
-                <i id="actionIcon" class="fas fa-paper-plane"></i>
+          <div class="setting-group spaced-group" style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="searchWebToggle" style="cursor: pointer;">Use Websearch</label>
+            <input type="checkbox" id="searchWebToggle" style="transform: scale(1.3); cursor: pointer;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="task-interface" style="display: none">
+      <div class="workspace-desk">
+        <div class="app-container">
+          <main class="chat-main">
+            <header class="chat-header">
+              <h1>
+                TaskAgent
+              </h1>
+              <button id="btn-back-search" class="header-btn">
+                Back to Search
               </button>
-            </div>
-          </div>
-        </main>
+            </header>
 
-        <aside class="settings-sidebar" id="settingsSidebar">
-          <div class="vnc-monitor-container">
-            <div class="vnc-header">
-              <span><i class="fas fa-desktop"></i> Agent Vision</span>
-              <span id="vnc-status" class="status-dot disconnected"></span>
-            </div>
-            <div id="vnc-screen">
-              <div id="vnc-placeholder">Waiting for VNC connection...</div>
-            </div>
-          </div>
-
-          <div class="sidebar-header">
-            <h2>Configuration</h2>
-          </div>
-          
-          <div class="settings-content">
-            <div class="setting-group">
-              <label for="folderInput">Index New Folder</label>
-              <div class="input-group">
-                <input type="text" id="folderInput" placeholder="e.g., ./data/docs" />
-                <button id="indexBtn">Index</button>
+            <div class="chat-history" id="chatHistory">
+              <div class="message system">
+                <div class="message-content">
+                  Ask a question or assign a task to begin.
+                </div>
               </div>
-              <p id="indexStatus" class="status-msg"></p>
             </div>
 
-            <div class="setting-group spaced-group">
-              <label>Active Agent</label>
-              <select class="mode-select">
-                <option>visionAgent_v2 (Default)</option>
-                <option>Search Agent</option>
-              </select>
+            <div class="chat-input-area">
+              <div class="input-wrapper">
+                <textarea
+                  id="promptInput"
+                  placeholder="Type your prompt here..."
+                  rows="1"
+                ></textarea>
+                <button id="actionBtn" class="send-btn">
+                  <i id="actionIcon" class="fas fa-paper-plane"></i>
+                </button>
+              </div>
             </div>
-          </div>
-        </aside>
+          </main>
 
+          <aside class="settings-sidebar" id="settingsSidebar">
+            <div class="vnc-monitor-container">
+              <div class="vnc-header">
+                <span><i class="fas fa-desktop"></i> Agent Vision</span>
+                <span id="vnc-status" class="status-dot disconnected"></span>
+              </div>
+              <div id="vnc-screen">
+                <div id="vnc-placeholder">Waiting for VNC connection...</div>
+              </div>
+            </div>
+
+            <div class="sidebar-header">
+              <h2>Configuration</h2>
+            </div>
+
+            <div class="settings-content">
+              <div class="setting-group">
+                <label for="taskFolderInput">Index New Folder</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="taskFolderInput"
+                    placeholder="e.g., ./data/docs"
+                  />
+                  <button id="taskIndexBtn">Index</button>
+                </div>
+                <p id="taskIndexStatus" class="status-msg"></p>
+              </div>
+
+              <div class="setting-group spaced-group" style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="taskWebToggle" style="cursor: pointer;">Use Websearch</label>
+                <input type="checkbox" id="taskWebToggle" style="transform: scale(1.3); cursor: pointer;" />
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
 

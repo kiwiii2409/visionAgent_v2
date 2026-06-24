@@ -95,8 +95,10 @@ class VisionGraphBuilder:
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
         if self.preprocessor:
             b64_annotated, coordinate_dict = await self.preprocessor.query(b64)
-            return {"screenshot_b64": b64_annotated, "coordinate_dict": coordinate_dict}
-        
+            if b64_annotated is not None:
+                return {"screenshot_b64": b64_annotated, "coordinate_dict": coordinate_dict}
+            # YOLO failed — fall through to raw screenshot
+
         return {"screenshot_b64": b64}
 
 

@@ -37,6 +37,7 @@ from src.agents.search_graph import SearchGraphBuilder
 from src.agents.vision_graph import VisionGraphBuilder
 
 from src.io.vision.yolo_client import AsyncYoloClient
+from src.io.vision.yolo_local import AsyncYoloParser
 
 # tools
 from src.tools.ui_tools import get_ui_tools
@@ -63,7 +64,7 @@ class ServiceRegistry:
         self._setup_display()
         self._init_models()
         self._init_services()
-        self.all_tools = get_ui_tools(self.controller) + get_general_tools() #+ get_program_tools() # TODO: activate get_program_tool for testing if UI opening doesnt owrk
+        self.all_tools = get_ui_tools(self.controller) + get_general_tools() + get_program_tools()
 
         self._initialized = True
 
@@ -177,9 +178,17 @@ class ServiceRegistry:
             max_tokens=1024,
         )
 
-        self.preprocessor = None
-        if self.settings.enable_preprocessing:
-            self.preprocessor = AsyncYoloClient(self.settings.preprocessing_base_url)
+        match self.settings.enable_preprocessing:
+            case "local":
+                if not self.settings.preporcessing_model_path:
+                    raise Exception("[Registry] Specify path to YOLO model when using local preprocessing")
+                self.preprocessor = AsyncYoloParser(self.settings.preporcessing_model_path)
+            case "server":
+                if not self.settings.preprocessing_base_url:
+                    raise Exception("[Registry] Specify server url when using server-preprocessing")
+                self.preprocessor = AsyncYoloClient(self.settings.preprocessing_base_url)
+            case _:
+                self.preprocessor = None
 
 
 

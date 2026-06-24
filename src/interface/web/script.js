@@ -1,287 +1,423 @@
-import RFB from "https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js";
+import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
 
-let currentAbortController = null;
-let isExecuting = false;
-let rfb;
+document.addEventListener("DOMContentLoaded", () => {
+    // ==============================================
+    // 1. DOM Elements Selection
+    // ==============================================
+    
+    // Search Interface Elements
+    const searchInterface = document.getElementById("search-interface");
+    const searchInput = document.getElementById("search-input");
+    const btnSearch = document.getElementById("btn-search");
+    const btnTaskMode = document.getElementById("btn-task-mode");
+    const resultsContainer = document.getElementById("results-container");
+    const aiText = document.getElementById("ai-text");
+    const docsList = document.getElementById("docs-list");
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Event Bindings
-    const promptInput = document.getElementById('promptInput');
-    const actionBtn = document.getElementById('actionBtn');
-    const indexBtn = document.getElementById('indexBtn');
+    // Task Workspace Elements
+    const taskInterface = document.getElementById("task-interface");
+    const chatHistory = document.getElementById("chatHistory");
+    const promptInput = document.getElementById("promptInput");
+    const actionBtn = document.getElementById("actionBtn");
+    const actionIcon = document.getElementById("actionIcon");
+    const btnBackSearch = document.getElementById("btn-back-search");
 
-    actionBtn.addEventListener('click', handleAction);
-    indexBtn.addEventListener('click', indexFolder);
+    // Settings Elements (Search & Task views)
+    const taskModeSelect = document.getElementById("taskModeSelect");
+    const searchModeSelect = document.getElementById("searchModeSelect");
+    const searchSettingsBtn = document.getElementById("search-settings-btn");
+    const searchSettingsDrawer = document.getElementById("search-settings-drawer");
+    const searchSettingsOverlay = document.getElementById("search-settings-overlay");
+    const closeSearchSettingsBtn = document.getElementById("close-search-settings");
 
-    promptInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); 
-            if (!isExecuting) handleAction();
-        }
+
+    const taskWebToggle = document.getElementById("taskWebToggle");
+    const searchWebToggle = document.getElementById("searchWebToggle");
+
+    // ==============================================
+    // 2. Interface Toggling Logic
+    // ==============================================
+
+    // Switch to Task Mode
+    btnTaskMode.addEventListener("click", () => {
+        searchInterface.style.display = "none";
+        taskInterface.style.display = "flex"; // Uses flex to maintain full screen height
     });
 
-    promptInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = this.scrollHeight + 'px';
+    // Switch back to Search Mode
+    btnBackSearch.addEventListener("click", () => {
+        taskInterface.style.display = "none";
+        searchInterface.style.display = "flex"; 
     });
 
-    // Initialize VNC
-    initVNC();
-});
 
-// --- Chat Actions ---
+    // ==============================================
+    // 3. Search Engine Logic (NDJSON Streaming)
+    // ==============================================
 
-function handleAction() {
-    if (isExecuting) {
-        stopAgent();
-    } else {
-        sendMessage();
-    }
-}
+    const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
 
-function setButtonState(executing) {
-    isExecuting = executing;
-    const btn = document.getElementById('actionBtn');
-    const icon = document.getElementById('actionIcon');
-    
-    if (executing) {
-        btn.classList.add('stop-mode');
-        icon.className = 'fas fa-square'; 
-    } else {
-        btn.classList.remove('stop-mode');
-        icon.className = 'fas fa-paper-plane'; 
-    }
-}
+        // Trigger CSS transition (moves search bar to the top)
+        searchInterface.classList.add("results-mode");
+        resultsContainer.style.display = "block";
+        
+        // UI Loading State
+        aiText.innerHTML = '<span style="color:#a1a1aa;"><em>Connecting to local context...</em></span>';
+        docsList.innerHTML = "";
 
-function stopAgent() {
-    if (currentAbortController) {
-        currentAbortController.abort();
-        currentAbortController = null;
-    }
-}
-
-function createMessageBubble(sender) {
-    const chatHistory = document.getElementById('chatHistory');
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${sender}`;
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    msgDiv.appendChild(contentDiv);
-    chatHistory.appendChild(msgDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-    
-    return contentDiv;
-}
-
-async function sendMessage() {
-    const promptInput = document.getElementById('promptInput');
-    const text = promptInput.value.trim();
-    if (!text) return;
-
-    currentAbortController = new AbortController();
-    setButtonState(true);
-
-    const userBubble = createMessageBubble('user');
-    userBubble.textContent = text;
-    
-    promptInput.value = '';
-    promptInput.style.height = 'auto';
-
-    const systemBubble = createMessageBubble('system');
-    systemBubble.innerHTML = `
-        <details class="agent-thinking" open>
-            <summary><i class="fas fa-terminal"></i> Execution Log</summary>
-            <ul class="thinking-steps"></ul>
-        </details>
-        <div class="agent-response"></div>
-    `;
-    
-    const thinkingToggle = systemBubble.querySelector('.agent-thinking');
-    const thinkingSteps = systemBubble.querySelector('.thinking-steps');
-    const responseDiv = systemBubble.querySelector('.agent-response');
-    let currentToolLi = null;
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: text }),
-            signal: currentAbortController.signal 
-        });
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        try {
+            const response = await fetch("/api/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    query: query, 
+                    use_websearch: searchWebToggle.checked 
+                })
+            });
             
-            buffer += decoder.decode(value, { stream: true });
-            let lines = buffer.split('\n');
-            buffer = lines.pop(); 
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
 
-            for (let line of lines) {
-                if (!line.trim()) continue;
-                try {
-                    const data = JSON.parse(line);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop(); // keep the trailing incomplete line
+                
+                for (const line of lines) {
+                    if (!line.trim()) continue;
                     
-                    if (data.type === "init") {
-                        const li = document.createElement('li');
-                        li.innerHTML = `<span class="text-primary">System routing to <b>${data.mode.toUpperCase()}</b> execution mode.</span>`;
-                        thinkingSteps.appendChild(li);
-                    } 
-                    else if (data.type === "tool") {
-                        currentToolLi = document.createElement('li');
-                        currentToolLi.innerHTML = `Executing Tool: <code>${data.name}</code>`;
-                        thinkingSteps.appendChild(currentToolLi);
-                    } 
-                    else if (data.type === "tool_done" && currentToolLi) {
-                        currentToolLi.innerHTML += ` (Completed)`;
-                    } 
-                    else if (data.type === "msg") {
-                        let htmlContent = marked.parse(data.content);
-                        if (data.sources && data.sources.length > 0) {
-                            const sourcesList = data.sources.map(src => `<li><code>${src}</code></li>`).join('');
-                            htmlContent += `
-                            <details class="agent-sources">
-                                <summary><i class="fas fa-file-alt"></i> Sources</summary>
-                                <ul class="source-steps list-unstyled">${sourcesList}</ul>
-                            </details>`;
+                    try {
+                        const data = JSON.parse(line);
+                        
+                        if (data.type === "tool") {
+                            aiText.innerHTML = `<span style="color:#6b7280;"><em>${data.name} <i class="fas fa-spinner fa-spin"></i></em></span>`;
+                        } else if (data.type === "msg") {
+                            // Render AI Overview
+                            if (typeof marked !== 'undefined') {
+                                aiText.innerHTML = marked.parse(data.content);
+                            } else {
+                                aiText.innerText = data.content;
+                            }
+
+                            // Render Documents
+                            if (data.sources && data.sources.length > 0) {
+                                docsList.innerHTML = data.sources.map(doc => {
+                                    const pathStr = doc.path || doc.source || '';
+                                    
+                                    // Check if the path is a web URL or a local file
+                                    const isWebUrl = pathStr.startsWith('http://') || pathStr.startsWith('https://');
+                                    const linkHref = isWebUrl 
+                                        ? pathStr 
+                                        : `/api/file?path=${encodeURIComponent(pathStr)}`;
+
+                                    return `
+                                        <div class="doc-result">
+                                            <div class="doc-path">${pathStr}</div>
+                                            <a href="${linkHref}" target="_blank" rel="noopener noreferrer" class="doc-title">
+                                                ${doc.name || pathStr || 'Document'}
+                                            </a>
+                                            <div class="doc-summary">${doc.summary || ''}</div>
+                                        </div>
+                                    `;
+                                }).join('');
+                            } else {
+                                docsList.innerHTML = `<p style="color: #6b7280;">No explicit documents cited.</p>`;
+                            }
+                        } else if (data.type === "error") {
+                            aiText.innerHTML = `<span style="color: #ef4444;">${data.content}</span>`;
                         }
-                        responseDiv.innerHTML = htmlContent;
-                        thinkingToggle.removeAttribute('open');
-                    } 
-                    else if (data.type === "error") {
-                        responseDiv.innerHTML += `<br><span class="text-error">Error: ${data.content}</span>`;
+                    } catch (e) {
+                        console.warn("Could not parse JSON chunk:", line, e);
                     }
-                    document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
-                } catch (err) {
-                    console.error("Failed to parse stream chunk:", err, line);
                 }
             }
+        } catch (error) {
+            aiText.innerHTML = '<span style="color: #ef4444;">Error fetching search results.</span>';
+            console.error("Search Error:", error);
         }
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            responseDiv.innerHTML += `<br><span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Execution stopped by user.</span>`;
-            if (currentToolLi && !currentToolLi.innerHTML.includes('(Completed)')) {
-                currentToolLi.innerHTML += ` <span class="text-warning">(Aborted)</span>`;
-            }
-        } else {
-            responseDiv.textContent = "Error: Could not connect to the agent backend.";
-        }
-    } finally {
-        setButtonState(false);
-        currentAbortController = null;
-    }
-}
-
-// --- Folder Indexing Action ---
-
-async function indexFolder() {
-    const folderInput = document.getElementById('folderInput');
-    const statusText = document.getElementById('indexStatus');
-    const path = folderInput.value.trim();
-
-    if (!path) return;
-
-    statusText.textContent = "";
-    const originalValue = folderInput.value;
-    const originalPlaceholder = folderInput.placeholder;
-
-    folderInput.value = "";
-    folderInput.placeholder = "Indexing...";
-    folderInput.classList.add('input-loading');
-    folderInput.disabled = true;
-
-    try {
-        const res = await fetch('/api/index', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_path: path })
-        });
-        const data = await res.json();
-
-        folderInput.classList.remove('input-loading');
-
-        if (res.ok) {
-            folderInput.placeholder = `Indexed files in ${path}`;
-            folderInput.classList.add('input-success');
-            setTimeout(() => {
-                folderInput.classList.remove('input-success');
-                setTimeout(() => folderInput.placeholder = originalPlaceholder, 500); 
-            }, 3500);
-        } else {
-            folderInput.placeholder = `Error: ${data.detail || 'Could not index folder'}`;
-            folderInput.classList.add('input-error');
-            setTimeout(() => {
-                folderInput.classList.remove('input-error');
-                setTimeout(() => {
-                    folderInput.placeholder = originalPlaceholder;
-                    folderInput.value = originalValue; 
-                }, 500); 
-            }, 4000);
-        }
-    } catch (e) {
-        folderInput.classList.remove('input-loading');
-        folderInput.placeholder = "Network error. Make sure the server is running.";
-        folderInput.classList.add('input-error');
-        setTimeout(() => {
-            folderInput.classList.remove('input-error');
-            setTimeout(() => {
-                folderInput.placeholder = originalPlaceholder;
-                folderInput.value = originalValue;
-            }, 500); 
-        }, 4000);
-    } finally {
-        folderInput.disabled = false;
-    }
-}
-
-// --- VNC Engine Logic ---
-
-async function initVNC() {
-    try {
-        const resp = await fetch("/api/config");
-        const config = await resp.json();
-        connectVNC(config);
-    } catch (e) {
-        console.warn("Could not fetch /api/config, using defaults:", e);
-        connectVNC();
-    }
-}
-
-function connectVNC(config) {
-    const screen = document.getElementById("vnc-screen");
-    const statusDot = document.getElementById("vnc-status");
-    const placeholder = document.getElementById("vnc-placeholder");
-
-    const cfg = config || {
-        vnc_websocket_port: 6080,
-        vnc_websocket_path: "/",
     };
+
+    btnSearch.addEventListener("click", performSearch);
+    searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") performSearch();
+    });
+
+
+    // ==============================================
+    // 4. Task Workspace Logic (NDJSON Streaming)
+    // ==============================================
     
-    const url = `ws://${window.location.hostname}:${cfg.vnc_websocket_port}${cfg.vnc_websocket_path}`;
+    let isAgentRunning = false;
+    let currentAbortController = null;
+
+    const addMessage = (content, sender = "user") => {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${sender}`;
+        
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "message-content agent-response";
+        
+        if (sender === "system" && typeof marked !== 'undefined') {
+            contentDiv.innerHTML = marked.parse(content);
+        } else {
+            contentDiv.textContent = content;
+        }
+
+        msgDiv.appendChild(contentDiv);
+        chatHistory.appendChild(msgDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight; 
+        return contentDiv; 
+    };
+
+    const handleChatSubmit = async () => {
+        if (isAgentRunning) {
+            if (currentAbortController) currentAbortController.abort();
+            resetChatInputState();
+            return;
+        }
+
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+
+        addMessage(prompt, "user");
+        promptInput.value = "";
+        
+        isAgentRunning = true;
+        actionIcon.className = "fas fa-square";
+        actionBtn.classList.add("stop-mode");
+        
+        const responseNode = addMessage("Initializing Agent...", "system");
+        currentAbortController = new AbortController();
+
+        try {
+            const response = await fetch("/api/task", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    query: prompt,
+                    use_websearch: taskWebToggle.checked
+                }),
+                signal: currentAbortController.signal
+            });
+
+            if (!response.ok) throw new Error("Network response was not ok");
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let accumulatedMessage = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop(); 
+                
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    
+                    try {
+                        const data = JSON.parse(line);
+                        
+                        if (data.type === "tool") {
+                            responseNode.innerHTML = `<span style="color:#a1a1aa;"><em><i class="fas fa-cog fa-spin"></i> ${data.name}</em></span>`;
+                        } else if (data.type === "msg") {
+                            accumulatedMessage += data.content;
+                            if (typeof marked !== 'undefined') {
+                                responseNode.innerHTML = marked.parse(accumulatedMessage);
+                            } else {
+                                responseNode.innerText = accumulatedMessage;
+                            }
+                        } else if (data.type === "error") {
+                            responseNode.innerHTML += `<br/><span style="color: #ef4444;">${data.content}</span>`;
+                        }
+                    } catch (e) {
+                        console.warn("Could not parse JSON chunk:", line, e);
+                    }
+                }
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                responseNode.innerHTML += "<br/><br/><em>[Agent stopped by user]</em>";
+            } else {
+                responseNode.innerHTML = '<span style="color: #ef4444;">Error communicating with agent.</span>';
+                console.error("Chat Error:", error);
+            }
+        } finally {
+            resetChatInputState();
+        }
+    };
+
+    const resetChatInputState = () => {
+        isAgentRunning = false;
+        currentAbortController = null;
+        actionIcon.className = "fas fa-paper-plane";
+        actionBtn.classList.remove("stop-mode");
+    };
+
+    actionBtn.addEventListener("click", handleChatSubmit);
+    promptInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleChatSubmit();
+        }
+    });
+
+    promptInput.addEventListener("input", function() {
+        this.style.height = "auto";
+        this.style.height = (this.scrollHeight) + "px";
+        if (this.value === "") this.style.height = "auto";
+    });
+
+
+    // ==============================================
+    // 5. Search Drawer Settings & Shared Indexing
+    // ==============================================
+
+    // 5A. Drawer Open/Close functionality
+    const toggleSettingsDrawer = (forceState) => {
+        const isOpen = forceState !== undefined ? forceState : !searchSettingsDrawer.classList.contains("open");
+        if (isOpen) {
+            searchSettingsDrawer.classList.add("open");
+            searchSettingsOverlay.classList.add("open");
+        } else {
+            searchSettingsDrawer.classList.remove("open");
+            searchSettingsOverlay.classList.remove("open");
+        }
+    };
+
+    searchSettingsBtn.addEventListener("click", () => toggleSettingsDrawer(true));
+    closeSearchSettingsBtn.addEventListener("click", () => toggleSettingsDrawer(false));
+    searchSettingsOverlay.addEventListener("click", () => toggleSettingsDrawer(false));
+
+    // 5B. Syncing Agent Selection state between Task view and Search View
+    taskWebToggle.addEventListener("change", (e) => searchWebToggle.checked = e.target.checked);
+    searchWebToggle.addEventListener("change", (e) => taskWebToggle.checked = e.target.checked);
+
+    // 5C. Shared Reusable Indexing Logic
+   const setupIndexer = (inputId, btnId, statusId) => {
+        const inputEl = document.getElementById(inputId);
+        const btnEl = document.getElementById(btnId);
+        const statusEl = document.getElementById(statusId);
+
+        // Hide the old status element so it never takes up empty space/margin
+        if (statusEl) statusEl.style.display = "none";
+
+        btnEl.addEventListener("click", async () => {
+            const folderPath = inputEl.value.trim();
+            const originalBtnText = btnEl.innerHTML;
+            const originalPlaceholder = inputEl.getAttribute("placeholder") || "e.g., ./data/docs";
+
+            if (!folderPath) {
+                inputEl.classList.add("input-error");
+                inputEl.value = "";
+                inputEl.placeholder = "Please enter a valid path";
+                setTimeout(() => {
+                    inputEl.classList.remove("input-error");
+                    inputEl.placeholder = originalPlaceholder;
+                }, 3000);
+                return;
+            }
+
+            // Start Loading State (Inline)
+            inputEl.classList.add("input-loading");
+            inputEl.value = ""; // Clear text so placeholder is visible
+            inputEl.placeholder = "Indexing in progress...";
+            
+            // Swap button text to a spinner
+            btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btnEl.disabled = true;
+
+            try {
+                const response = await fetch("/api/index", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ folder_path: folderPath }) 
+                });
+
+                inputEl.classList.remove("input-loading");
+
+                if (response.ok) {
+                    inputEl.classList.add("input-success");
+                    inputEl.placeholder = "Indexing complete!";
+                    btnEl.innerHTML = '<i class="fas fa-check"></i>';
+                    
+                    setTimeout(() => {
+                        inputEl.classList.remove("input-success");
+                        inputEl.placeholder = originalPlaceholder;
+                        btnEl.innerHTML = originalBtnText;
+                        btnEl.disabled = false;
+                    }, 3000);
+                } else {
+                    throw new Error("Indexing failed");
+                }
+            } catch (error) {
+                inputEl.classList.remove("input-loading");
+                inputEl.classList.add("input-error");
+                inputEl.placeholder = "Failed to index folder.";
+                btnEl.innerHTML = '<i class="fas fa-times"></i>';
+                
+                setTimeout(() => {
+                    inputEl.classList.remove("input-error");
+                    inputEl.placeholder = originalPlaceholder;
+                    btnEl.innerHTML = originalBtnText;
+                    btnEl.disabled = false;
+                }, 3000);
+            }
+        });
+    };
+
+    // Apply the indexer functionality to both Task and Search view panels
+    setupIndexer("taskFolderInput", "taskIndexBtn", "taskIndexStatus");
+    setupIndexer("searchFolderInput", "searchIndexBtn", "searchIndexStatus");
+
+    // ==============================================
+    // 6. VNC Monitor Streaming (noVNC)
+    // ==============================================
+    const vncScreen = document.getElementById('vnc-screen');
+    const vncStatus = document.getElementById('vnc-status');
+    const vncPlaceholder = document.getElementById('vnc-placeholder');
+
+    // Connect to Websockify (which bridges to your IPv4 5900 port)
+    const vncUrl = 'ws://127.0.0.1:6080';
 
     try {
-        rfb = new RFB(screen, url);
-        rfb.scaleViewport = true;
-        rfb.resizeSession = false;
+        const rfb = new RFB(vncScreen, vncUrl);
 
         rfb.addEventListener("connect", () => {
-            statusDot.className = "status-dot connected";
-            placeholder.style.display = "none";
+            console.log("VNC Connected successfully.");
+            vncStatus.classList.remove("disconnected");
+            vncStatus.classList.add("connected");
+            vncPlaceholder.style.display = "none";
         });
 
-        rfb.addEventListener("disconnect", () => {
-            statusDot.className = "status-dot disconnected";
-            placeholder.style.display = "flex";
-            placeholder.textContent = "VNC Disconnected. Retrying...";
-            setTimeout(() => connectVNC(config), 5000);
+        rfb.addEventListener("disconnect", (e) => {
+            console.warn("VNC Disconnected.", e);
+            vncStatus.classList.remove("connected");
+            vncStatus.classList.add("disconnected");
+            vncPlaceholder.style.display = "block";
+            vncPlaceholder.innerText = "VNC Disconnected. Is Websockify running?";
         });
-    } catch (e) {
-        console.error("VNC Connection failed:", e);
+
+        // Makes the stream automatically scale to your 16:9 CSS box
+        rfb.scaleViewport = true;
+        rfb.resizeSession = true;
+
+    } catch (error) {
+        console.error("Failed to initialize VNC stream:", error);
+        vncPlaceholder.innerText = "Error loading VNC viewer.";
     }
-}
+
+}); // <-- Ensure this remains the end of your DOMContentLoaded wrapper

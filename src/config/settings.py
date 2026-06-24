@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
 
-    enable_preprocessing: bool = True
+    enable_preprocessing: Literal["local", "server", "none"] = "local"
     preprocessing_base_url: str = "http://127.0.0.1:8020"
+    preporcessing_model_path: str = str(PROJECT_ROOT / "OmniParser" / "weights" / "icon_detect" / "model.pt")
 
     
 
