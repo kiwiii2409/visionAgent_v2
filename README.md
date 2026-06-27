@@ -1,14 +1,14 @@
 ## How to run:
-#### Setup for OmniParser:
+#### Setup for OmniParser/ YOLO:
 <!-- 1. start VPN in separate Terminal: `sudo openvpn --config vpn-air-standard.ovpn` (download config here: https://vpn.ito.cit.tum.de/)  -->
-2. start OmniParser on Server (run `python3 gradio_demo.py` in `/data1/visionAgent/OmniParser/`)
+2. start OmniParser or YOLO on Server (run `python3 gradio_demo.py` or `python3 yolo_server.py` in `/data1/visionAgent/OmniParser/`)
 3. use port-forwarding, e.g. `ssh -i ~/.ssh/uni_key -L 7861:localhost:7860 manipulation_agent@131.159.60.57`
 - new local YOLO option available (weights taken from OmniParser_v2)
   - download the weights:
     - `mkdir -p data/weights/yolo`  
     - `for f in train_args.yaml model.pt model.yaml; do curl -L "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/$f" -o "data/weights yolo/$f"; done`
 
-
+#### Note: visionAgent operates is currently slowed down on purpose (high wait times before screenshots)
 
 ### Mode 1: Agent operates on your screen
 1. in `settings.py`: `"local", "tray", "False"`
@@ -29,6 +29,39 @@
   - **visionAgent**: VLM + Omniparser agent, handles all other tasks (writing emails, creating files), interacts with system using tools in a human-like way
 
 
+## Issues 
+- MODE 2: if e.g. vscode is opened on the main display, instructing the agent to "open vscode" will open another instance on the main display
+- VisionAgent struggles if yolo doesnt recognize bounding box => currenlty: use yolo bb as primary and predict coordinates as fallback
+- "race condition" like behaviour, where sometimes tool-calls with the same goals are executed shortly after each other (slow down kind of fixes it!)
+- Occasional random steps/ non-sense tool-calls (e.g. clicking bounding box marking nothing) => maybe try with more capable model (> gpt 5.4 mini) to see whether it's vlm issue
+
+
+## Missing & Ideas
+#### Website
+- change settings: since we separated Task and Search they should have individual settings. 
+  - Search Settings: add new folders, (maybe) websearch active or not, 
+  - Task Settings: (?) permissions? am i allowed to delete? etc. idk
+
+#### Memory & RAG
+
+#### Agents
+- Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
+  - added MMR already, but maybe add keyword search separately? 
+- better context filtering for search Agent
+- searchAgent as tool for TaskAgent, s.t. taskagent (given an absolute path) can e.g. navigate to file and send as attachment
+- (maybe) Voice Input, Websearch tool
+- Human-Intervention for TaksAgent s.t. it can wait for user password (maybe implement as additional tool)
+
+##### Less Important
+- Memory-features:
+  - Shared short-term memory between agents (should we limit that so save tokens?)
+  - (maybe) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
+    - requires: user has to be able to "rate" success in the UI after visionAgent finishes a task
+- (maybe) additional tools for task execution (closing program, creating/ deleting files) => might require "safe" mode s.t. operations are just logged without being 
+- (maybe) Multiple chats, persistent chats
+
+
+
 ## Already implemented
 - **searchAgent** with following flow: 
   - Query -> RAG to get chunks + summaries of surrounding files -> LLM decides: enough information? 
@@ -45,27 +78,10 @@
   - make website pretty
   - agent-thinking-bubble in UI doesn't reliably display all steps
 - Allow user to change settings on Website
-  - 
+- visionAgent using VLM + Omniparser
 
 
-## Missing & Ideas
-#### Website
 
-#### Memory & RAG
-
-#### Agents
-- Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
-  - maybe switch similarity search to EnsembleRetriever or Maximal Marginal Relevance (MMR) to fan out retrieved documents (sometimes focus on one folder, but info in anot)
-- Memory-features:
-  - Shared short-term memory between agents (should we limit that so save tokens?)
-  - (maybe, low priority) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
-    - requires: user has to be able to "rate" success in the UI after visionAgent finishes a task
-- (low priority) additional tools for task execution (closing program, creating/ deleting files) => might require "safe" mode s.t. operations are just logged without being 
-- (low priority) visionAgent using VLM + Omniparser
-- (low priority) Multiple chats, persistent chats
-
-## Issues 
-- if e.g. vscode is opened on the main display, instructing the agent to "open vscode" will open another instance on the main display
 
 
 

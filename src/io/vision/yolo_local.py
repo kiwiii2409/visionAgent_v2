@@ -169,6 +169,7 @@ class AsyncYoloParser:
 if __name__ == "__main__":
     async def test_yolo():
         parser = AsyncYoloParser(model_path="data/weights/yolo/model.pt")
+        parser = AsyncYoloParser(model_path="data/weights/yolo/model.pt")
         import time
         start_time = time.time()
         b64_image, button_coords = await parser.annotate_image(

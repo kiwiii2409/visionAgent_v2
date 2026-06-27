@@ -33,7 +33,7 @@ def get_ui_tools(controller: IOController):
     ) -> str:
         """
         Clicks a specific UI element on the screen.
-        - PRIMARY METHOD: Provide 'element_id' if the destination has a numeric label.
+        - PRIMARY METHOD: If the relevant button is annotated (green bounding box with 'element_id' in the top right), always use the annotated value!
         - FALLBACK METHOD: Only pass 'x' and 'y' directly if there is NO bounding box. Estimate the pixel coordinates using nearby labeled boxes. Text-Fields often lack the bounding-box, be careful there and use direct coordinate prediction if they lack a clear 'element_id'.
         - Use clicks=1 for standard selection. Use clicks=2 to double-click.
         - Set button to "left", "right", or "middle".

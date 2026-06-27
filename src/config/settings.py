@@ -15,10 +15,11 @@ class Settings(BaseSettings):
     openai_api_key: str = "dummy-key" # gets overwritten by .env value
     api_base_url: str = "https://api.openai.com/v1"
     vlm_model_name: str = "gpt-5.4-mini"
-    llm_model_name: str = "gpt-5.4-nano"
+    llm_model_name: str = "gpt-5.4-mini"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
 
+    enable_preprocessing: Literal["local", "server", "none"] = "local"
     enable_preprocessing: Literal["local", "server", "none"] = "local"
     preprocessing_base_url: str = "http://127.0.0.1:8020"
     preporcessing_model_path: str = str(PROJECT_ROOT / "OmniParser" / "weights" / "icon_detect" / "model.pt")

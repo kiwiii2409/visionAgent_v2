@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from src.core.registry import ServiceRegistry
 from src.interface.stream_handler import stream_search_agent, stream_vision_agent, generate_chat_stream
+from src.interface.stream_handler import stream_search_agent, stream_vision_agent, generate_chat_stream
 
 registry = ServiceRegistry()
 
@@ -27,7 +28,6 @@ TRAY_DIR = os.path.join(BASE_DIR, "tray")
 
 app = FastAPI(lifespan=lifespan)
 
-# Mount frontend-specific static directories
 app.mount("/static", StaticFiles(directory=WEB_DIR, html=False), name="static")
 app.mount("/tray_static", StaticFiles(directory=TRAY_DIR, html=False), name="tray_static")
 

@@ -34,7 +34,9 @@ dependencies = [
     "langchain-chroma>=0.1",
     "langchain-huggingface",
     "langchain-unstructured>=0.1.0",   
-
+    "ddgs",
+    "beautifulsoup4",
+    
     "pymupdf>=1.24.0",                 
     # MCP Ecosystem
     "mcp>=0.1",
@@ -51,6 +53,7 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "websockify",
+    "markitdown[all]",
     
     # Dev tools
     "pytest>=7.4",
