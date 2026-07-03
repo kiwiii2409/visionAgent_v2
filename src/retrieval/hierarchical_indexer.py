@@ -83,10 +83,11 @@ class HierarchicalIndexer:
             docs_to_summarize = []
             paths_to_delete = []
 
+            time_start = time.time()
+
             file_loader = AsyncFileLoader() # init file loader for indexing
             loaded_files = await file_loader.load(folders_to_index) # returns tuple (root, file_path)
 
-            time_start = time.time()
             # file loading and gathering changes (wihtout applying them)
 
             for root_str, doc in loaded_files:

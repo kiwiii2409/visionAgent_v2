@@ -28,6 +28,7 @@ async def stream_search_agent(prompt: str, use_websearch: bool, registry: Servic
     initial_state = {
         "query": prompt,
         "context_blocks": [],
+        "tree_blocks": [], 
         "known_file_paths": [],
         "explored_subtrees": set(),
         "final_answer": "",

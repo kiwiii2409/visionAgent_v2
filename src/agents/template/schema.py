@@ -12,6 +12,7 @@ import operator
 class SearchState(TypedDict):
     query: str
     context_blocks: List[str]      # Stores text from Chroma, tree maps, and full files
+    tree_blocks: List[str]         # stores directory maps separately
     known_file_paths: List[str]    # Keeps track of which files we retrieved chunks from/ read
     explored_subtrees: Set[str]    # Keeps track of which parts of the tree we explored
     final_answer: str

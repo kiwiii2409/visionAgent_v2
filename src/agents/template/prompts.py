@@ -34,7 +34,7 @@ def get_file_selection_prompt() -> ChatPromptTemplate:
         "User Query: {query}\n"
         "Files with currently retrieved snippets: {known_files}\n\n"
         "Context (including partial code chunks and local directory maps):\n{context}\n\n"
-        "Based on the query and the provided maps, select up to 3 files that are MOST likely to contain the missing answers. "
+        "Based on the query and the provided maps, select up to 5 files that are MOST likely to contain the missing answers. "
         "NOTE: The context only contains small snippets of the 'known_files'. "
         "If you suspect the missing information is located elsewhere inside one of those exact same files, "
         "you SHOULD select it here so we can read the entire file. You may also select completely new files from the maps. "

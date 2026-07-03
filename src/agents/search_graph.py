@@ -141,7 +141,7 @@ class SearchGraphBuilder:
         paths = set()
         explored_subtrees = set()
         collected_summaries = state.get(
-            "file_summaries", {})  # Get dict from state
+            "file_summaries", {})  
 
         for doc in top_docs:
             source_str = doc.metadata.get("source", "unknown_path")
@@ -163,10 +163,11 @@ class SearchGraphBuilder:
                 source_str, explored_subtrees, collected_summaries, max_depth=2)
             tree_context.extend(new_tree_blocks)
 
-        # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
-        context.extend(tree_context)
+        # # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
+        # context.extend(tree_context)
         return {
             "context_blocks": context,
+            "tree_blocks": tree_context, 
             "known_file_paths": list(paths),
             "explored_subtrees": explored_subtrees,
             "file_summaries": collected_summaries
@@ -178,11 +179,12 @@ class SearchGraphBuilder:
         print("[Search Graph] Evaluating Context")
 
         evaluator = get_evaluation_prompt() | self.llm.with_structured_output(EvaluationSchema)
+        full_context = "\n\n".join(state["context_blocks"] + state.get("tree_blocks", []))
         input_data = {
             "query": state["query"],
-            "context": "\n\n".join(state["context_blocks"])
+            "context": full_context
         }
-
+        # print(full_context)
         print(
             f"[Search Graph] Approx. tokens passed to LLM (evaluate_context): {len(str(input_data)) // 4}")
 
@@ -265,10 +267,11 @@ class SearchGraphBuilder:
             # print("\n".join(state["context_blocks"]) )
             # print("*" * 50)
             # selects up to 3 relevant files using summaries of surrounding files
+            full_context = "\n\n".join(state["context_blocks"] + state.get("tree_blocks", []))
             input_data = {
                 "query": state["query"],
                 "known_files": state["known_file_paths"],
-                "context": "\n".join(state["context_blocks"])
+                "context": full_context
             }
 
 
@@ -302,15 +305,12 @@ class SearchGraphBuilder:
                 except Exception as e:
                     new_context.append(f"> ERROR READING {file_path}: {e}")
 
-            new_context.extend(new_tree_context)
-            a = "\n\n".join(state["context_blocks"])
-            b = "\n\n".join(new_context)
-            print(a)
-            print(b)
+
             print(
                 f"[Search Graph] Fetching additional context from: {new_paths}")
             return {
                 "context_blocks": state["context_blocks"] + new_context,
+                "tree_blocks": state["tree_blocks"] + new_tree_context,
                 "known_file_paths": state["known_file_paths"] + new_paths,
                 "explored_subtrees": explored_subtrees,
                 "iterations": state.get("iterations", 0) + 1,
@@ -322,9 +322,10 @@ class SearchGraphBuilder:
         print(f"[Search Graph] Synthesizing Final Answer")
 
         final_answer = get_synthesis_prompt() | self.llm.with_structured_output(FinalAnswerSchema)
+        full_context = "\n\n".join(state["context_blocks"] + state.get("tree_blocks", []))
         input_data = {
             "query": state["query"],
-            "context": "\n\n".join(state["context_blocks"])
+            "context": full_context
         }
 
 
