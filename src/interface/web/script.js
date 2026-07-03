@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     query: query, 
-                    use_websearch: searchWebToggle.checked 
+                    use_websearch: searchWebToggle.dataset.value === "true" 
                 })
             });
             
@@ -203,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     query: prompt,
-                    use_websearch: taskWebToggle.checked
+                    use_websearch: taskWebToggle.dataset.value === "true"
                 }),
                 signal: currentAbortController.signal
             });
@@ -303,8 +303,25 @@ document.addEventListener("DOMContentLoaded", () => {
     searchSettingsOverlay.addEventListener("click", () => toggleSettingsDrawer(false));
 
     // 5B. Syncing Agent Selection state between Task view and Search View
-    taskWebToggle.addEventListener("change", (e) => searchWebToggle.checked = e.target.checked);
-    searchWebToggle.addEventListener("change", (e) => taskWebToggle.checked = e.target.checked);
+    // 5B. Syncing Agent Selection state between Task view and Search View
+    const syncToggleState = (valStr) => {
+        [taskWebToggle, searchWebToggle].forEach(toggle => {
+            toggle.setAttribute("data-value", valStr);
+            const btns = toggle.querySelectorAll("button");
+            btns.forEach(b => {
+                if(b.dataset.val === valStr) b.classList.add("active");
+                else b.classList.remove("active");
+            });
+        });
+    };
+
+    [taskWebToggle, searchWebToggle].forEach(toggle => {
+        toggle.querySelectorAll("button").forEach(btn => {
+            btn.addEventListener("click", () => {
+                syncToggleState(btn.dataset.val);
+            });
+        });
+    });
 
     // 5C. Shared Reusable Indexing Logic
    const setupIndexer = (inputId, btnId, statusId) => {
@@ -359,6 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         inputEl.placeholder = originalPlaceholder;
                         btnEl.innerHTML = originalBtnText;
                         btnEl.disabled = false;
+                        updateFoldersList();
                     }, 3000);
                 } else {
                     throw new Error("Indexing failed");
@@ -379,6 +397,68 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
+    // 5D. Fetch and display indexed folders
+    const updateFoldersList = async () => {
+        try {
+            const res = await fetch("/api/folders");
+            const data = await res.json();
+            const folders = data.folders || [];
+            
+            const renderHTML = folders.map(f => `<li><i class="fas fa-folder"></i> ${f}</li>`).join('');
+            
+            const searchList = document.getElementById("searchFoldersList");
+            const taskList = document.getElementById("taskFoldersList");
+            if (searchList) searchList.innerHTML = renderHTML;
+            if (taskList) taskList.innerHTML = renderHTML;
+        } catch (e) {
+            console.error("Failed to fetch folders", e);
+        }
+    };
+    
+    updateFoldersList(); // Fetch initially on load
+
+    // 5E. Rebuild Index Buttons
+    const setupRebuildBtn = (btnId) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.addEventListener("click", async () => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rebuilding...';
+            btn.disabled = true;
+            try {
+                const response = await fetch("/api/rebuild", { method: "POST" });
+                if (response.ok) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Rebuilt';
+                    btn.style.color = "#34a853";
+                    btn.style.borderColor = "#34a853";
+                    updateFoldersList(); // Refresh list just in case
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.style.color = "";
+                        btn.style.borderColor = "";
+                        btn.disabled = false;
+                    }, 3000);
+                } else {
+                    throw new Error("Rebuild failed");
+                }
+            } catch (error) {
+                btn.innerHTML = '<i class="fas fa-times"></i> Error';
+                btn.style.color = "#ea4335";
+                btn.style.borderColor = "#ea4335";
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.color = "";
+                    btn.style.borderColor = "";
+                    btn.disabled = false;
+                }, 3000);
+            }
+        });
+    };
+
+    setupRebuildBtn("searchRebuildBtn");
+    setupRebuildBtn("taskRebuildBtn");
     // Apply the indexer functionality to both Task and Search view panels
     setupIndexer("taskFolderInput", "taskIndexBtn", "taskIndexStatus");
     setupIndexer("searchFolderInput", "searchIndexBtn", "searchIndexStatus");

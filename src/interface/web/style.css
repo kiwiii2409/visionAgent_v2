@@ -246,7 +246,7 @@ textarea::placeholder {
 
 /* --- Right Page: Settings Sidebar --- */
 .settings-sidebar {
-  width: 50%; /* Reduced width for a cleaner sidebar look */
+  width: 450px; /* Changed from 50% to a fixed, slightly wider pixel width */
   flex-shrink: 0;
   background-color: var(--panel-bg);
   display: flex;
@@ -254,6 +254,7 @@ textarea::placeholder {
   border-left: 1px solid var(--border-color);
   height: 100%;
 }
+
 
 .sidebar-header {
   padding: 30px 30px 0 30px; /* Top padding, zero bottom padding */
@@ -852,7 +853,7 @@ textarea::placeholder {
     position: fixed;
     top: 0;
     right: -450px;
-    width: 400px;
+    width: 450px;
     height: 100vh;
     background: var(--panel-bg);
     border-left: 1px solid var(--border-color);
@@ -891,4 +892,70 @@ textarea::placeholder {
 
 .close-drawer-btn:hover {
     color: var(--text-main);
+}
+
+
+/* --- Segmented Toggle (Two-Button Design) --- */
+.segmented-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color); /* Grey border */
+  border-radius: 8px;
+  overflow: hidden;
+  width: 120px;
+  height: 32px;
+  background-color: var(--input-bg);
+}
+.segmented-toggle button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted); /* Grey text for inactive */
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.segmented-toggle button.active {
+  background-color: var(--primary); /* Blue background for active */
+  color: #fff;
+}
+.segmented-toggle button:first-child {
+  border-right: 1px solid var(--border-color); /* Grey divider */
+}
+/* --- Indexed Folders List --- */
+.indexed-folders-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 250px;
+  overflow-y: auto;
+}
+.indexed-folders-list li {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  word-break: break-all;
+}
+.indexed-folders-list li i {
+  color: var(--text-muted);
+}
+
+
+/* --- Rebuild Button Hover Effect --- */
+.rebuild-btn {
+  transition: all 0.2s ease;
+}
+
+.rebuild-btn:hover {
+  background-color: #ea4335 !important; /* Google Red */
+  color: white !important;
+  border-color: #ea4335 !important;
+  box-shadow: 0 2px 6px rgba(234, 67, 53, 0.3);
 }

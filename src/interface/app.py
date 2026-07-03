@@ -1,5 +1,7 @@
 import os
 import asyncio
+import shutil
+
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -106,7 +108,41 @@ async def index_endpoint(req: IndexRequest):
     await registry.document_h_indexer.build_index(registry.settings.auto_index_folders)
     await registry.reload_mcp()
 
-    return {"message": f"Successfully added '{req.folder_path}' to index queue."}
+    return {"message": f"Successfully added '{req.folder_path}' to index."}
+
+
+@app.get("/api/folders")
+async def get_folders():
+    print("[APP] Folders endpoint was called!")
+    return {"folders": registry.settings.auto_index_folders}
+
+@app.post("/api/rebuild")
+async def rebuild_endpoint():
+    print("[APP] Rebuild was triggered!")
+
+    indexing_dir = Path(registry.settings.indexing_path).resolve()
+    if indexing_dir.exists():
+        shutil.rmtree(indexing_dir, ignore_errors=True)
+    indexing_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        collection_data = await asyncio.to_thread(registry.vector_store._collection.get)        
+        all_ids = collection_data.get("ids", [])
+        if all_ids:
+            batch_size = 1000
+            for i in range(0, len(all_ids), batch_size):
+                batch_ids = all_ids[i:i + batch_size]
+                await asyncio.to_thread(
+                    registry.vector_store._collection.delete, 
+                    ids=batch_ids
+                )
+    except Exception as e:
+        print(f"[Rebuild] Warning during Chroma clear: {e}")
+
+    await registry.document_h_indexer.build_index(registry.settings.auto_index_folders)
+    await registry.reload_mcp()
+    return {"message": "Successfully rebuilt index and vector database from scratch."}
+
 
 
 if __name__ == "__main__":
