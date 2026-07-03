@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     llm_model_name: str = "gpt-5.4-mini"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
 
+    enable_local_search: bool = False # set to true to use local models
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model_name: str = "qwen3.5:4b"
 
-    enable_preprocessing: Literal["local", "server", "none"] = "local"
+
     enable_preprocessing: Literal["local", "server", "none"] = "local"
     preprocessing_base_url: str = "http://127.0.0.1:8020"
     preporcessing_model_path: str = str(PROJECT_ROOT / "OmniParser" / "weights" / "icon_detect" / "model.pt")
@@ -46,7 +49,7 @@ class Settings(BaseSettings):
     file_hashes_filename: str = "file_hashes.json"
 
 
-    retrieval_top_k: int = 4
+    retrieval_top_k: int = 8
     chunk_size: int = 512
     chunk_overlap: int = 128
     auto_index_folders: List[str] = [] # gets overwritten by .env value 

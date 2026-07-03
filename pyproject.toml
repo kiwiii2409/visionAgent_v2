@@ -34,6 +34,7 @@ dependencies = [
     "langchain-chroma>=0.1",
     "langchain-huggingface",
     "langchain-unstructured>=0.1.0",   
+    "langchain-ollama>=0.1.0",
     "ddgs",
     "beautifulsoup4",
     

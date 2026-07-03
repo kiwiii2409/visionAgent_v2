@@ -13,7 +13,7 @@ def get_evaluation_prompt() -> ChatPromptTemplate:
         "User Query: {query}\n\nRetrieved Context:\n{context}\n\n"
         "Does the retrieved context contain enough specific information to fully and accurately answer the user's query? "
         "Do not guess. If critical details are missing, say it is insufficient."
-        "If the local context is completely useless or the user's query is clearly about current events/external facts, set 'needs_websearch' to true to abandon local files and search the internet."
+        "CRITICAL INSTRUCTION: You must respond with ONLY valid JSON matching the requested schema. Do not include any conversational text, explanations, or markdown formatting blocks."        
     )
 
 def get_web_selection_prompt():

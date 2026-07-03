@@ -112,12 +112,11 @@ class SearchGraphBuilder:
                         )
                         tree_context.append(formatted_tree)
                         explored_subtrees.add(abs_dir_path)
-
                 except (KeyError, ValueError):
+                    print("[Search Graph] Fetching surrounding summaries failed!")
                     pass
 
                 break
-
         return tree_context
 
     async def initial_retrieval(self, state: SearchState):
@@ -166,7 +165,6 @@ class SearchGraphBuilder:
 
         # merge context blocks so it's [retrieved_chunk_1, retrieved_chunk_2, ..., file_summaries_1, file_summaries_2]
         context.extend(tree_context)
-
         return {
             "context_blocks": context,
             "known_file_paths": list(paths),
@@ -245,8 +243,7 @@ class SearchGraphBuilder:
                         except Exception as e:
                             new_context.append(
                                 f"> ERROR READING WEBSITE {url}: {e}")
-                a = "\n\n".join(new_context)
-                print(a)
+
                 return {
                     "context_blocks": state["context_blocks"] + new_context,
                     "iterations": state.get("iterations", 0) + 1,
@@ -306,8 +303,10 @@ class SearchGraphBuilder:
                     new_context.append(f"> ERROR READING {file_path}: {e}")
 
             new_context.extend(new_tree_context)
-            a = "\n\n".join(new_context)
+            a = "\n\n".join(state["context_blocks"])
+            b = "\n\n".join(new_context)
             print(a)
+            print(b)
             print(
                 f"[Search Graph] Fetching additional context from: {new_paths}")
             return {

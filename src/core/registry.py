@@ -24,7 +24,7 @@ logging.getLogger("sentence_transformers.SentenceTransformer").setLevel(logging.
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_openai import ChatOpenAI
-
+from langchain_ollama import ChatOllama 
 from sentence_transformers import CrossEncoder 
 # mcp
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -169,11 +169,21 @@ class ServiceRegistry:
 
     def _init_models(self) -> None:
         """Init VLM, LLM, Chroma + Embeddings"""
-        self.llm = ChatOpenAI(
-            model=self.settings.llm_model_name,
-            api_key=self.settings.openai_api_key,
-            base_url=self.settings.api_base_url
-        )
+        if self.settings.enable_local_search:
+            if self.settings.ollama_model_name is None or self.settings.ollama_base_url is None:
+                raise Exception("[Registry] Specify ollama url and model name to use local search!")
+            self.llm = ChatOllama(
+                model=self.settings.ollama_model_name,
+                base_url=self.settings.ollama_base_url,
+                num_ctx=16384,
+                temperature=0.0,  
+            )
+        else:
+            self.llm = ChatOpenAI(
+                model=self.settings.llm_model_name,
+                api_key=self.settings.openai_api_key,
+                base_url=self.settings.api_base_url
+            )
 
         # VLM for vision-based agent (supports image inputs)
         self.vlm = ChatOpenAI(
