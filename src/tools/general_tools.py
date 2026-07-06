@@ -10,7 +10,9 @@ from src.retrieval.web_search import asearch, aretrieve
 
 
 
-def get_general_tools():
+
+
+def get_general_tools(registry=None):
 
     @tool
     async def wait_tool(seconds: float) -> str:
@@ -72,4 +74,85 @@ def get_general_tools():
         except Exception as e:
             return f"Error reading file '{path}': {str(e)}"
         
-    return [wait_tool, read_document_tool,exploratory_search_tool, read_website_tool]
+    @tool
+    async def intervention_tool():
+        """
+        Pauses the agent's execution for 60 seconds to yield control to the human user.
+        
+        ALWAYS USE THIS TOOL WHEN ENCOUNTERING:
+        1. Authentication: login screen, captchas or 2FA.
+        2. Stuck State: stuck in a loop, repeating the exact same failed actions for several iterations without making progress."""
+        await asyncio.sleep(60)
+        return ("[Vision] Resuming Execution")
+
+
+    @tool
+    async def search_agent_tool(query:str, web_search:bool=False)-> str:
+        """
+        ALWAYS use this tool to retrieve local information or fetch simple information from the web. 
+        
+        CRITICAL INSTRUCTIONS FOR THE 'query' PARAMETER:
+        - Formulate the query as a concise, specific question or a short Google-style keyword search.
+        - DO NOT copy and paste your overarching task or give commands to the search agent.
+        - Search for a single specific piece of information at a time.
+        
+        Examples of BAD queries (too long, contains commands):
+        - "find local files related to an email sent to Alex or Thunderbird mail data; locate the file path"
+        - "search for the bug fix regarding the python recursion error on the website"
+        
+        Examples of GOOD queries (concise, question/keyword based):
+        - "Where is Thunderbird mail data stored?"
+        - "What is Alex's emails file path?"
+        - "How to fix Python recursion limit error fix?"
+        
+        Usecases:
+        1. local information: retrieve the filepath or content of a file.
+        2. web search: find up-to-date information or bug-fixes (set web_search=True).
+        """
+        if registry is None:
+            return "Error: Passed registry is not initialized."
+        
+        initial_state = {
+            "query": query,
+            "context_blocks": [],
+            "tree_blocks": [], 
+            "known_file_paths": [],
+            "explored_subtrees": set(),
+            "final_answer": "",
+            "sources": [],
+            "file_summaries": {},
+            "web_summaries": {},
+            "iterations": 0,
+            "max_iterations": registry.settings.max_search_iterations,
+            "use_websearch": web_search,
+            "needs_websearch_flag": False
+        }
+        print(f"[Vision] Delegated query: {query}")
+        try:
+            result = await registry.search_agent.ainvoke(initial_state)
+            
+            final_answer = result.get("final_answer", "No answer could be generated.")
+            sources = result.get("sources", [])
+            
+            response = f"Search Agent Final Answer:\n{final_answer}\n"
+            
+            if sources:
+                response += "\nSources referenced:\n"
+                for src in sources:
+                    response += f"- {src.get('name', 'Unknown')} ({src.get('path', 'Unknown Path')})\n"
+                    
+            return response
+            
+        except Exception as e:
+            return f"Error executing search agent: {str(e)}"
+        
+    return [
+        wait_tool, 
+        read_document_tool,
+        exploratory_search_tool, 
+        read_website_tool, 
+        intervention_tool, 
+        search_agent_tool
+    ]
+
+

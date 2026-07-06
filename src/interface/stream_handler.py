@@ -1,11 +1,11 @@
 import json
 import asyncio
 from src.core.registry import ServiceRegistry
+from src.agents.task_router import route_query
 
 
 async def generate_chat_stream(prompt: str, use_websearch: bool, registry: ServiceRegistry):
     """Routes the query and yields Server-Sent Events (JSON lines) for the frontend."""
-    from src.agents.task_router import route_query
 
     task_type = await route_query(prompt, registry.llm)
     yield json.dumps({"type": "init", "mode": task_type}) + "\n"
@@ -93,7 +93,7 @@ async def stream_vision_agent(prompt: str, use_websearch: bool, registry: Servic
                 await asyncio.sleep(0.3)
                 yield json.dumps({"type": "tool_done"}) + "\n"
 
-            elif node_name == "plan_action":
+            elif node_name == "think_and_act":
                 plan = state_update.get("current_plan")
                 if plan:
                     actions = plan.get("actions", [])

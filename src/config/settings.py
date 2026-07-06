@@ -32,11 +32,11 @@ class Settings(BaseSettings):
     # common configs:
     # local, tray, enable_vnc = false
     # virtual, web, enable_vnc = true
-    display_mode: Literal["local", "virtual", "docker"] = "local"
-    ui_mode: Literal["tray", "web"] = "tray"
+    display_mode: Literal["local", "virtual", "docker"] = "virtual"
+    ui_mode: Literal["tray", "web"] = "web"
     virtual_resolution: Tuple[int, int] = (1920, 1080)
     
-    enable_vnc: bool = False 
+    enable_vnc: bool = True 
     vnc_port: int = 5900
     vnc_websocket_port: int = 6080
     vnc_websocket_path: str = "/"

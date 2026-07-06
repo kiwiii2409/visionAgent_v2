@@ -113,7 +113,6 @@ async def index_endpoint(req: IndexRequest):
 
 @app.get("/api/folders")
 async def get_folders():
-    print("[APP] Folders endpoint was called!")
     return {"folders": registry.settings.auto_index_folders}
 
 @app.post("/api/rebuild")

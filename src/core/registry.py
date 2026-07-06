@@ -66,7 +66,7 @@ class ServiceRegistry:
         self._setup_display()
         self._init_models()
         self._init_services()
-        self.all_tools = get_ui_tools(self.controller) + get_general_tools() + get_program_tools()
+        self.all_tools = get_ui_tools(self.controller) + get_general_tools(self) + get_program_tools()
 
         self._initialized = True
 

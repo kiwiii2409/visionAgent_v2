@@ -131,7 +131,7 @@ body {
 
 .header-btn:hover {
   background-color: #e8eaed;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .chat-history {
@@ -171,7 +171,7 @@ body {
   background-color: var(--sys-msg-bg);
   border: 1px solid var(--sys-msg-border); /* Uses the new blue border */
   border-bottom-left-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* Chat Input Area */
@@ -188,11 +188,13 @@ body {
   border-radius: 32px; /* Matched the search bar pill shape */
   padding: 12px 16px 12px 24px;
   position: relative;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .input-wrapper:focus-within {
-  box-shadow: 0 1px 6px rgba(32,33,36,.15);
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.15);
   border-color: var(--primary);
 }
 
@@ -224,7 +226,9 @@ textarea::placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
   position: absolute;
   right: 12px;
   bottom: 10px;
@@ -236,7 +240,7 @@ textarea::placeholder {
 }
 
 .send-btn.stop-mode {
-  background: #ea4335; 
+  background: #ea4335;
 }
 
 .send-btn.stop-mode:hover {
@@ -246,7 +250,8 @@ textarea::placeholder {
 
 /* --- Right Page: Settings Sidebar --- */
 .settings-sidebar {
-  width: 450px; /* Changed from 50% to a fixed, slightly wider pixel width */
+  width: 50%; 
+  min-width: 500px; /* Ensures VNC monitor is always readable */
   flex-shrink: 0;
   background-color: var(--panel-bg);
   display: flex;
@@ -254,7 +259,6 @@ textarea::placeholder {
   border-left: 1px solid var(--border-color);
   height: 100%;
 }
-
 
 .sidebar-header {
   padding: 30px 30px 0 30px; /* Top padding, zero bottom padding */
@@ -364,15 +368,15 @@ textarea::placeholder {
 
 #vnc-screen {
   width: 100%;
-  aspect-ratio: 16 / 9; 
+  aspect-ratio: 16 / 9;
   background-color: #000000;
   position: relative;
   overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 16px; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 #vnc-placeholder {
@@ -407,8 +411,7 @@ textarea::placeholder {
   border-radius: 50%;
   box-shadow: 0 0 5px currentColor;
 }
-
-.status-dot.connected {
+F .status-dot.connected {
   color: #34a853; /* Google Green */
   background-color: #34a853;
 }
@@ -536,7 +539,7 @@ textarea::placeholder {
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.9em;
-  color: #c026d3; 
+  color: #c026d3;
 }
 
 .agent-response pre {
@@ -614,286 +617,304 @@ textarea::placeholder {
 
 /* Input Overlays */
 .input-success {
-    background-color: #e6f4ea !important;
-    border-color: #34a853 !important;
-    color: #137333 !important;
-    transition: all 0.5s ease;
+  background-color: #e6f4ea !important;
+  border-color: #34a853 !important;
+  color: #137333 !important;
+  transition: all 0.5s ease;
 }
 
 .input-success::placeholder {
-    color: #137333 !important;
-    font-weight: 500;
-    opacity: 1;
+  color: #137333 !important;
+  font-weight: 500;
+  opacity: 1;
 }
 
 .input-loading {
-    background-color: #e8f0fe !important;
-    border-color: #4285f4 !important;
-    color: #1a73e8 !important;
-    transition: all 0.3s ease;
+  background-color: #e8f0fe !important;
+  border-color: #4285f4 !important;
+  color: #1a73e8 !important;
+  transition: all 0.3s ease;
 }
 
 .input-loading::placeholder {
-    color: #1a73e8 !important;
-    font-weight: 500;
-    opacity: 1;
+  color: #1a73e8 !important;
+  font-weight: 500;
+  opacity: 1;
 }
 
 .input-error {
-    background-color: #fce8e6 !important;
-    border-color: #ea4335 !important;
-    color: #c5221f !important;
-    transition: all 0.3s ease;
+  background-color: #fce8e6 !important;
+  border-color: #ea4335 !important;
+  color: #c5221f !important;
+  transition: all 0.3s ease;
 }
 
 .input-error::placeholder {
-    color: #c5221f !important;
-    font-weight: 500;
-    opacity: 1;
+  color: #c5221f !important;
+  font-weight: 500;
+  opacity: 1;
 }
 
 /* Utilities */
-.text-primary { color: var(--primary); }
-.text-error { color: #ea4335; }
-.text-warning { color: #fbbc05; }
-.list-unstyled { padding-left: 12px; font-size: 0.85rem; list-style: none; opacity: 0.8; }
-.spaced-group { margin-top: 24px; }
-
+.text-primary {
+  color: var(--primary);
+}
+.text-error {
+  color: #ea4335;
+}
+.text-warning {
+  color: #fbbc05;
+}
+.list-unstyled {
+  padding-left: 12px;
+  font-size: 0.85rem;
+  list-style: none;
+  opacity: 0.8;
+}
+.spaced-group {
+  margin-top: 24px;
+}
 
 /* --- Google-like Search Interface --- */
 #search-interface {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    background-color: var(--chat-bg); 
-    padding: 20px;
-    box-sizing: border-box;
-    overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background-color: var(--chat-bg);
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .search-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    margin-top: 25vh; 
-    transition: margin-top 0.4s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 25vh;
+  transition: margin-top 0.4s ease-out;
 }
 
 #search-interface.results-mode .search-header {
-    margin-top: 2vh; 
+  margin-top: 2vh;
 }
 
 .logo {
-    font-size: 5rem;
-    font-weight: bold;
-    margin-bottom: 30px;
-    letter-spacing: -2px;
+  font-size: 5rem;
+  font-weight: bold;
+  margin-bottom: 30px;
+  letter-spacing: -2px;
 }
 
 .search-bar-container {
-    width: 100%;
-    max-width: 750px;
-    position: relative;
+  width: 100%;
+  max-width: 750px;
+  position: relative;
 }
 
 .search-input {
-    width: 100%;
-    padding: 16px 28px;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
-    border-radius: 28px; 
-    font-size: 18px;
-    outline: none;
-    transition: box-shadow 0.2s, border-color 0.2s;
-    box-sizing: border-box;
+  width: 100%;
+  padding: 16px 28px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 28px;
+  font-size: 18px;
+  outline: none;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
+  box-sizing: border-box;
 }
 
-.search-input:hover, .search-input:focus {
-    box-shadow: 0 1px 6px rgba(32,33,36,.15);
-    border-color: var(--border-color);
+.search-input:hover,
+.search-input:focus {
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.15);
+  border-color: var(--border-color);
 }
 
 .search-buttons {
-    margin-top: 25px;
-    display: flex;
-    gap: 12px;
+  margin-top: 25px;
+  display: flex;
+  gap: 12px;
 }
 
 .search-btn {
-    background-color: var(--user-msg-bg);
-    border: 1px solid;
-    border-color: var(--border-color);
-    border-radius: 4px;
-    color: var(--text-main);
-    font-size: 14px;
-    padding: 0 16px;
-    height: 36px;
-    cursor: pointer;
-    transition: all 0.2s;
+  background-color: var(--user-msg-bg);
+  border: 1px solid;
+  border-color: var(--border-color);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 14px;
+  padding: 0 16px;
+  height: 36px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .search-btn:hover {
-    box-shadow: 0 1px 2px rgba(0,0,0,.05);
-    background-color: var(--border-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background-color: var(--border-color);
 }
 
 /* --- Results Area --- */
 #results-container {
-    width: 100%;
-    max-width: 850px;
-    margin-top: 40px;
-    text-align: left;
-    padding-bottom: 60px;
+  width: 100%;
+  max-width: 850px;
+  margin-top: 40px;
+  text-align: left;
+  padding-bottom: 60px;
 }
 
 .ai-overview {
-    background: var(--sys-msg-bg);
-    border: 1px solid var(--sys-msg-border);
-    border-radius: 16px;
-    padding: 24px 32px;
-    margin-bottom: 30px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  background: var(--sys-msg-bg);
+  border: 1px solid var(--sys-msg-border);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-bottom: 30px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .ai-overview h2 {
-    font-size: 1.1rem;
-    color: var(--primary);
-    margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin: 0 0 12px 0;
 }
 
 .ai-text {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--text-main);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-main);
 }
 
 /* --- Document Items --- */
 .doc-result {
-    margin-top: 35px;
-    margin-bottom: 35px;
+  margin-top: 35px;
+  margin-bottom: 35px;
 }
 
 .doc-path {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-    font-family: monospace;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-family: monospace;
 }
 
 .doc-title {
-    font-size: 20px;
-    color: var(--primary);
-    text-decoration: none;
-    margin-bottom: 4px;
-    display: inline-block;
-    cursor: pointer;
+  font-size: 20px;
+  color: var(--primary);
+  text-decoration: none;
+  margin-bottom: 4px;
+  display: inline-block;
+  cursor: pointer;
 }
 
 .doc-title:hover {
-    text-decoration: underline;
-    color: var(--primary-hover);
+  text-decoration: underline;
+  color: var(--primary-hover);
 }
 
 .doc-summary {
-    font-size: 16px;
-    color: var(--text-muted);
-    line-height: 1.5;
+  font-size: 16px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 /* --- Floating Settings Wheel (Search Interface) --- */
 .floating-settings-btn {
-    position: fixed;
-    bottom: 30px;
-    left: 30px;
-    background: var(--chat-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    font-size: 1.2rem;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    z-index: 100;
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  background: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
 }
 
 .floating-settings-btn:hover {
-    color: var(--primary);
-    border-color: var(--primary);
-    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.15);
-    transform: rotate(30deg);
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 4px 15px rgba(66, 133, 244, 0.15);
+  transform: rotate(30deg);
 }
 
 /* --- Search Settings Drawer & Overlay --- */
 .search-settings-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.25);
-    z-index: 998;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
 }
 
 .search-settings-overlay.open {
-    opacity: 1;
-    visibility: visible;
+  opacity: 1;
+  visibility: visible;
 }
 
 .search-settings-drawer {
-    position: fixed;
-    top: 0;
-    right: -450px;
-    width: 450px;
-    height: 100vh;
-    background: var(--panel-bg);
-    border-left: 1px solid var(--border-color);
-    box-shadow: -10px 0 30px rgba(0,0,0,0.08);
-    z-index: 999;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: column;
+  position: fixed;
+  top: 0;
+  right: -500px;
+  width: 500px; /* Increased from 450px */
+  height: 100vh;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.08);
+  z-index: 999;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 .search-settings-drawer.open {
-    right: 0;
+  right: 0;
 }
 
 .drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 30px;
-    border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .drawer-header h2 {
-    font-size: 1.2rem;
-    font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .close-drawer-btn {
-    background: transparent;
-    border: none;
-    font-size: 1.2rem;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: color 0.2s;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
 .close-drawer-btn:hover {
-    color: var(--text-main);
+  color: var(--text-main);
 }
-
 
 /* --- Segmented Toggle (Two-Button Design) --- */
 .segmented-toggle {
@@ -946,7 +967,6 @@ textarea::placeholder {
 .indexed-folders-list li i {
   color: var(--text-muted);
 }
-
 
 /* --- Rebuild Button Hover Effect --- */
 .rebuild-btn {
