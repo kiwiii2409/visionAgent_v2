@@ -12,6 +12,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 
+from langchain_core.runnables import Runnable
+
 
 class LLMLogger:
     """Write-only JSONL logger for LLM interactions."""
@@ -136,6 +138,10 @@ class LoggedLLM:
         """Re-wrap after with_structured_output so logging survives."""
         inner = self._llm.with_structured_output(*args, **kwargs)
         return LoggedLLM(inner, self._logger, self._model)
+
+
+# Register as virtual subclass so LangChain's coerce_to_runnable accepts it
+Runnable.register(LoggedLLM)
 
 
 def wrap_llm_with_logger(llm, logger: LLMLogger, model_name: str = ""):
