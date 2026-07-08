@@ -41,6 +41,28 @@ def get_file_selection_prompt() -> ChatPromptTemplate:
         "Return absolute paths."
     )
 
+def get_query_plan_prompt() -> ChatPromptTemplate:
+    """ requires 'query' as parameter; classifies intent for routing """
+    return ChatPromptTemplate.from_template(
+        "Classify this user query and extract mentioned file/folder names.\n\n"
+        "1. 'targeted_file' — query names a specific file by name or path.\n"
+        "   Examples and the hints you MUST extract:\n"
+        "   - 'explain main.py' → hints: ['main.py']\n"
+        "   - 'what does src/config/settings.py do' → hints: ['src/config/settings.py', 'settings.py']\n"
+        "   - 'show me search_graph.py and task_router.py' → hints: ['search_graph.py', 'task_router.py']\n\n"
+        "2. 'structural_overview' — query asks about directory structure or file listing.\n"
+        "   Examples and hints:\n"
+        "   - 'what's in this directory' → hints: []\n"
+        "   - 'show me the project structure' → hints: []\n"
+        "   - 'list files in src/agents' → hints: ['src/agents']\n\n"
+        "3. 'broad_semantic' — query searches for functionality/concepts WITHOUT naming files.\n"
+        "   hints: always []\n\n"
+        "CRITICAL: For 'targeted_file', target_hints MUST contain every filename or path from the query. "
+        "Never leave target_hints empty for targeted_file intent.\n\n"
+        "Query: {query}"
+    )
+
+
 def get_synthesis_prompt() -> ChatPromptTemplate:
     """ requires 'query' and 'context' as parameter"""
     return ChatPromptTemplate.from_template(

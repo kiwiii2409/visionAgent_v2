@@ -11,14 +11,16 @@ Query -> Retrieve Context -> Is Context Sufficient?
 """
 
 import os
+import re
 import json
 from typing import Literal
 from pathlib import Path
+from collections import defaultdict
 
 from langgraph.graph import StateGraph, START, END
 
-from src.agents.template.schema import SearchState, EvaluationSchema, FileSelectionSchema, FinalAnswerSchema, WebSelectionSchema
-from src.agents.template.prompts import get_evaluation_prompt, get_file_selection_prompt, get_synthesis_prompt, get_web_selection_prompt
+from src.agents.template.schema import SearchState, EvaluationSchema, FileSelectionSchema, FinalAnswerSchema, WebSelectionSchema, QueryPlanSchema
+from src.agents.template.prompts import get_evaluation_prompt, get_file_selection_prompt, get_synthesis_prompt, get_web_selection_prompt, get_query_plan_prompt
 
 
 class SearchGraphBuilder:
@@ -32,6 +34,57 @@ class SearchGraphBuilder:
         self.retrieval_k = retrieval_k
 
         self.tree_path = Path(summary_tree_path)
+
+        # -- tree cache + flat file index (built once on init) --
+        self._tree_cache = None
+        self._path_to_summary = {}
+        self._name_to_paths = defaultdict(list)
+        self._build_file_index()
+
+    # ── tree cache + flat file index ──────────────────────────────────
+
+    def _load_tree(self) -> dict:
+        """Lazy-load summary_tree.json once, cache in memory."""
+        if self._tree_cache is None:
+            with open(self.tree_path, "r", encoding="utf-8") as f:
+                self._tree_cache = json.load(f)
+            print("[Search Graph] Summary tree loaded and cached.")
+        return self._tree_cache
+
+    def _build_file_index(self):
+        """Walk the summary tree to build path→summary and name→paths maps."""
+        if not self.tree_path.exists():
+            print("[Search Graph] WARNING: No summary_tree found, file index empty.")
+            return
+
+        tree = self._load_tree()
+
+        def walk(node, base):
+            for key, val in node.items():
+                cur = str(Path(base) / key)
+                if val.get("_type") == "file":
+                    self._path_to_summary[cur] = val.get("summary", "")
+                    self._name_to_paths[key.lower()].append(cur)
+                elif val.get("_type") in ("folder", "root"):
+                    walk(val.get("children", {}), cur)
+
+        for root_str, root_node in tree.items():
+            walk(root_node.get("children", {}), root_str)
+
+        print(f"[Search Graph] File index built: {len(self._path_to_summary)} files indexed.")
+
+    def _resolve_file(self, hint: str) -> list[str]:
+        """Resolve a file name or path fragment to absolute paths (candidates)."""
+        # 1. exact filename match
+        name = Path(hint).name.lower()
+        if name in self._name_to_paths:
+            return self._name_to_paths[name]
+
+        # 2. substring fuzzy match
+        matches = [p for p in self._path_to_summary if hint.lower() in p.lower()]
+        return matches[:5]
+
+    # ── directory map helpers ────────────────────────────────────────
 
     def _format_subtree_to_md(self, node: dict, base_path: str, collected_summaries: dict, indent_level: int = 0, max_depth: int = 2) -> str:
         """
@@ -56,10 +109,12 @@ class SearchGraphBuilder:
                 if indent_level < max_depth:
                     child_str = self._format_subtree_to_md(
                         value["children"], current_path, collected_summaries, indent_level + 1, max_depth)
-                if child_str:
-                    lines.append(child_str)
+                    if child_str:
+                        lines.append(child_str)
+                    else:
+                        lines.append(f"{indent}  └── ... (deeper files omitted)")
                 else:
-                    # placeholder s.t. llm knows that it continues there
+                    # at max depth — show placeholder so LLM knows it continues
                     lines.append(f"{indent}  └── ... (deeper files omitted)")
 
         return "\n".join(lines)
@@ -69,54 +124,54 @@ class SearchGraphBuilder:
             Finds grandparent of source_str and returns file_summaries from surrounding files starting from grandparent down to max_depth as list.
         """
 
-        if self.tree_path.exists():
-            with open(self.tree_path, "r", encoding="utf-8") as f:
-                self.summary_tree = json.load(f)
-        else:
-            print("[Search Graph] ERROR: No summary_tree found!")
-
+        summary_tree = self._load_tree()  # uses cache, reads once
         tree_context = []
         source = Path(source_str)
 
-        for root_str, root_node in self.summary_tree.items():
-            if source_str.startswith(root_str):
-                try:
-                    rel_parts = source.relative_to(root_str).parts
+        for root_str, root_node in summary_tree.items():
+            # Component-aware root matching (avoids prefix false positives)
+            try:
+                source.relative_to(root_str)
+            except ValueError:
+                continue
 
-                    # for root_str being proj/... and source being .../file.md
-                    if len(rel_parts) > 2:
-                        # for proj/src/folder/file.md -> rel_parts src/folder/file.md -> return src/
-                        base_parts = rel_parts[:-2]
-                    elif len(rel_parts) == 2:
-                        # for proj/src/file.md -> rel_parts src/file.md -> return src/
-                        base_parts = rel_parts[:-1]
-                    else:
-                        # for proj/file.md -> rel_parts file.md -> return ()
-                        base_parts = ()
+            try:
+                rel_parts = source.relative_to(root_str).parts
 
-                    current_node = root_node["children"]
-                    # iterate to starting point (up to grandparent)
-                    for part in base_parts:
-                        current_node = current_node[part]["children"]
+                # for root_str being proj/... and source being .../file.md
+                if len(rel_parts) > 2:
+                    # for proj/src/folder/file.md -> rel_parts src/folder/file.md -> return src/
+                    base_parts = rel_parts[:-2]
+                elif len(rel_parts) == 2:
+                    # for proj/src/file.md -> rel_parts src/file.md -> return src/
+                    base_parts = rel_parts[:-1]
+                else:
+                    # for proj/file.md -> rel_parts file.md -> return ()
+                    base_parts = ()
 
-                    # Case: base_parts = () -> add artifical root name
-                    abs_dir_path = str(Path(root_str).joinpath(*base_parts))
-                    if abs_dir_path not in explored_subtrees:
-                        # build the md tree
-                        subtree_md = self._format_subtree_to_md(
-                            current_node, abs_dir_path, collected_summaries, max_depth=max_depth)
+                current_node = root_node["children"]
+                # iterate to starting point (up to grandparent)
+                for part in base_parts:
+                    current_node = current_node[part]["children"]
 
-                        formatted_tree = (
-                            f"### DIRECTORY MAP: {abs_dir_path}\n"
-                            f"```text\n{subtree_md}\n```\n"
-                        )
-                        tree_context.append(formatted_tree)
-                        explored_subtrees.add(abs_dir_path)
-                except (KeyError, ValueError):
-                    print("[Search Graph] Fetching surrounding summaries failed!")
-                    pass
+                # Case: base_parts = () -> add artifical root name
+                abs_dir_path = str(Path(root_str).joinpath(*base_parts))
+                if abs_dir_path not in explored_subtrees:
+                    # build the md tree
+                    subtree_md = self._format_subtree_to_md(
+                        current_node, abs_dir_path, collected_summaries, max_depth=max_depth)
 
-                break
+                    formatted_tree = (
+                        f"### DIRECTORY MAP: {abs_dir_path}\n"
+                        f"```text\n{subtree_md}\n```\n"
+                    )
+                    tree_context.append(formatted_tree)
+                    explored_subtrees.add(abs_dir_path)
+            except (KeyError, ValueError):
+                print("[Search Graph] Fetching surrounding summaries failed!")
+                pass
+
+            break
         return tree_context
 
     async def initial_retrieval(self, state: SearchState):
@@ -356,9 +411,9 @@ class SearchGraphBuilder:
                 })
             else:
                 file_name = Path(path_str).name
-                # simple lookup to retrieve summary
-                file_summary = file_summaries.get(
-                    path_str, "No summary available.")
+                # lookup: tree-collected summaries first, then flat index, then fallback
+                file_summary = (file_summaries.get(path_str) or
+                                self._path_to_summary.get(path_str, "No summary available."))
 
                 enriched_sources.append({
                     "name": file_name,
@@ -370,6 +425,145 @@ class SearchGraphBuilder:
             "final_answer": response.answer,
             "sources": enriched_sources
         }
+
+    # ── intent routing: plan_query + targeted_read + structural_overview ──
+
+    async def plan_query(self, state: SearchState):
+        """Classify intent: targeted_file / structural_overview / broad_semantic."""
+        planner = get_query_plan_prompt() | self.llm.with_structured_output(QueryPlanSchema)
+        result = await planner.ainvoke({"query": state["query"]})
+        hints = list(result.target_hints) if result.target_hints else []
+
+        # Fallback: if LLM classified as targeted_file but returned no hints,
+        # extract file-like tokens from the query text directly.
+        if result.intent == "targeted_file" and not hints:
+            query = state["query"]
+            # Match patterns like "foo.py", "foo.js", "path/to/foo.py", "FooBar.hs"
+            extracted = re.findall(r'[\w/.-]+\.\w{1,6}', query)
+            hints = [h for h in extracted if not h.startswith(('http://', 'https://'))]
+            if hints:
+                print(f"[Search Graph] Intent: targeted_file | Hints (regex fallback): {hints}")
+            else:
+                print(f"[Search Graph] Intent: targeted_file | Hints: [] (no file patterns found)")
+        else:
+            print(f"[Search Graph] Intent: {result.intent} | Hints: {hints}")
+
+        return {
+            "intent": result.intent,
+            "target_hints": hints
+        }
+
+    async def targeted_read(self, state: SearchState):
+        """Read specific files named in the query. Falls back to vector search on miss."""
+        hints = state.get("target_hints", [])
+        context: list[str] = []
+        tree_context: list[str] = []
+        paths: list[str] = []
+        explored_subtrees = state.get("explored_subtrees", set())
+        collected_summaries = state.get("file_summaries", {})
+        read_tool = self.mcp_tools_dict.get("read_document_tool")
+
+        if not read_tool:
+            print("[Search Graph] targeted_read: read_document_tool not available")
+            return {"resolution_failed": True}
+
+        # Resolve all hints
+        all_resolved: list[str] = []
+        for hint in hints:
+            resolved = self._resolve_file(hint)
+            all_resolved.extend(resolved)
+
+        # Deduplicate while preserving order
+        seen = set()
+        all_resolved = [p for p in all_resolved if not (p in seen or seen.add(p))]
+
+        if not all_resolved:
+            print(f"[Search Graph] targeted_read: no file matched hints {hints}")
+            return {"resolution_failed": True}
+
+        # Single match → read the full file
+        if len(all_resolved) == 1:
+            path = all_resolved[0]
+            print(f"[Search Graph] targeted_read: reading {path}")
+            try:
+                content = await read_tool.ainvoke({"path": path})
+                context.append(f"### FULL FILE CONTENT: {path}\n```\n{content}\n```\n")
+                paths.append(path)
+                new_tree = self._get_surrounding_context(path, explored_subtrees, collected_summaries)
+                tree_context.extend(new_tree)
+            except Exception as e:
+                context.append(f"> ERROR reading {path}: {e}")
+        else:
+            # Multiple candidates → present them for the LLM to decide
+            print(f"[Search Graph] targeted_read: {len(all_resolved)} candidates")
+            candidate_lines = ["### CANDIDATE FILES (multiple matches, resolve ambiguity)"]
+            for p in all_resolved:
+                s = self._path_to_summary.get(p, "")
+                candidate_lines.append(f"- {p}: {s}")
+            context.append("\n".join(candidate_lines))
+
+        return {
+            "context_blocks": context,
+            "tree_blocks": tree_context,
+            "known_file_paths": paths,
+            "resolution_failed": False,
+            "explored_subtrees": explored_subtrees,
+            "file_summaries": collected_summaries
+        }
+
+    async def structural_overview_node(self, state: SearchState):
+        """Generate directory maps from summary tree, no vector search."""
+        hints = state.get("target_hints", [])
+        tree = self._load_tree()
+        tree_context: list[str] = []
+        collected_summaries = state.get("file_summaries", {})
+
+        for root_str, root_node in tree.items():
+            start_node = root_node.get("children", {})
+            base_path = root_str
+
+            # If hints point to a subfolder, navigate there
+            if hints:
+                for hint in hints:
+                    parts = Path(hint).parts
+                    current = start_node
+                    cur_base = base_path
+                    for part in parts:
+                        if part in current and current[part].get("_type") == "folder":
+                            current = current[part].get("children", {})
+                            cur_base = str(Path(cur_base) / part)
+                    start_node = current
+                    base_path = cur_base
+
+            subtree_md = self._format_subtree_to_md(start_node, base_path, collected_summaries, max_depth=3)
+            tree_context.append(
+                f"### DIRECTORY MAP: {base_path}\n"
+                f"```text\n{subtree_md}\n```\n"
+            )
+
+        print(f"[Search Graph] structural_overview: generated map for {base_path}")
+        return {
+            "context_blocks": [],  # no vector retrieval
+            "tree_blocks": tree_context,
+            "file_summaries": collected_summaries
+        }
+
+    # ── routing helpers ──────────────────────────────────────────────
+
+    def _route_by_intent(self, state: dict) -> str:
+        intent = state.get("intent", "broad_semantic")
+        if intent == "targeted_file":
+            return "targeted_read"
+        elif intent == "structural_overview":
+            return "structural_overview_node"
+        return "initial_retrieval"
+
+    def _route_after_targeted(self, state: dict) -> str:
+        if state.get("resolution_failed"):
+            return "initial_retrieval"
+        return "evaluate_context"
+
+    # ── original routing ─────────────────────────────────────────────
 
     def evaluation_router(self, state: dict):
         """Evaluate context & enforce max exploration iterations."""
@@ -387,15 +581,36 @@ class SearchGraphBuilder:
     def build(self):
         workflow = StateGraph(SearchState)
 
+        # -- new intent-routing nodes --
+        workflow.add_node("plan_query", self.plan_query)
+        workflow.add_node("targeted_read", self.targeted_read)
+        workflow.add_node("structural_overview_node", self.structural_overview_node)
+
+        # -- original nodes --
         workflow.add_node("initial_retrieval", self.initial_retrieval)
         workflow.add_node("evaluate_context", self.evaluate_context)
         workflow.add_node("explore_additional_files",
                           self.explore_additional_files)
         workflow.add_node("synthesize_answer", self.synthesize_answer)
 
-        workflow.add_edge(START, "initial_retrieval")
+        # -- new entry flow --
+        workflow.add_edge(START, "plan_query")
+
+        workflow.add_conditional_edges("plan_query", self._route_by_intent, {
+            "targeted_read": "targeted_read",
+            "structural_overview_node": "structural_overview_node",
+            "initial_retrieval": "initial_retrieval"
+        })
+
+        workflow.add_conditional_edges("targeted_read", self._route_after_targeted, {
+            "initial_retrieval": "initial_retrieval",
+            "evaluate_context": "evaluate_context"
+        })
+
+        workflow.add_edge("structural_overview_node", "evaluate_context")
         workflow.add_edge("initial_retrieval", "evaluate_context")
 
+        # -- original downstream (unchanged) --
         workflow.add_conditional_edges(
             "evaluate_context",
             self.evaluation_router

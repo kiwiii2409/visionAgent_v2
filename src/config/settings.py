@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     enable_local_search: bool = False # set to true to use local models
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model_name: str = "qwen3.5:4b"
+    ollama_summary_model_name: str = ""  # dedicated summary model, falls back to ollama_model_name if empty
+    summary_batch_size: int = 8          # files per LLM batch call
+    summary_concurrency: int = 5         # concurrent LLM batch calls
+    summary_timeout: int = 60            # per-batch timeout in seconds
+    summary_content_chars: int = 800     # max chars per file sent to LLM for summarization
 
 
     enable_preprocessing: Literal["local", "server", "none"] = "local"

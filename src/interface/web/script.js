@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const vncPlaceholder = document.getElementById('vnc-placeholder');
 
     // Connect to Websockify (which bridges to your IPv4 5900 port)
-    const vncUrl = 'ws://127.0.0.1:6080';
+    const vncUrl = `ws://${window.location.hostname}:6080`;
 
     try {
         const rfb = new RFB(vncScreen, vncUrl);

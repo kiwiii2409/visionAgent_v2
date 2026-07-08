@@ -25,6 +25,11 @@ class SearchState(TypedDict):
     use_websearch: bool             # allow the agent to access websites
     needs_websearch_flag: bool      # set by the evaluation_node if context is completely useless
 
+    # intent routing fields (default to broad_semantic for backward compat)
+    intent: str                    # "targeted_file" | "structural_overview" | "broad_semantic"
+    target_hints: List[str]        # files/folders extracted by plan_query
+    resolution_failed: bool        # set by targeted_read when no file matched
+
 class EvaluationSchema(BaseModel):
     reasoning: str = Field(description="Very short and concise explanation of why. Max 1 sentence.")
     is_sufficient: bool = Field(description="True if the context fully answers the query and the surrounding files do not provide additional information, False otherwise.")
@@ -42,6 +47,13 @@ class FileSelectionSchema(BaseModel):
 class TaskRoutingSchema(BaseModel):
     task_type: Literal["question", "task"] = Field(description="question if it's a pure knowledge-retrieval query, task if it involves interacting or manipulating the system")
     reasoning: str = Field(description="Very short and concise explanation of why. Max 1 sentence.")
+
+
+class QueryPlanSchema(BaseModel):
+    intent: Literal["targeted_file", "structural_overview", "broad_semantic"]
+    target_hints: list[str] = Field(default_factory=list,
+        description="File names, paths, or folder names mentioned in the query")
+    reasoning: str = Field(description="Brief explanation of the classification. Max 1 sentence.")
 
 
 class FinalAnswerSchema(BaseModel):

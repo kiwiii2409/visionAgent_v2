@@ -176,14 +176,23 @@ class ServiceRegistry:
                 model=self.settings.ollama_model_name,
                 base_url=self.settings.ollama_base_url,
                 num_ctx=16384,
-                temperature=0.0,  
+                temperature=0.0,
             )
+            # Dedicated summary LLM: uses a smaller/faster model if configured, otherwise reuses main LLM
+            summary_model = self.settings.ollama_summary_model_name or self.settings.ollama_model_name
+            self.summary_llm = ChatOllama(
+                model=summary_model,
+                base_url=self.settings.ollama_base_url,
+                num_ctx=16384,
+                temperature=0.0,
+            ) if summary_model != self.settings.ollama_model_name else self.llm
         else:
             self.llm = ChatOpenAI(
                 model=self.settings.llm_model_name,
                 api_key=self.settings.openai_api_key,
                 base_url=self.settings.api_base_url
             )
+            self.summary_llm = self.llm
 
         # VLM for vision-based agent (supports image inputs)
         self.vlm = ChatOpenAI(
@@ -254,7 +263,12 @@ class ServiceRegistry:
             summary_tree_path=str(self.summary_tree_path),
             file_hashes_path = str(self.file_hashes_path),
             chunk_size=self.settings.chunk_size,
-            chunk_overlap=self.settings.chunk_overlap
+            chunk_overlap=self.settings.chunk_overlap,
+            summary_llm=self.summary_llm,
+            batch_size=self.settings.summary_batch_size,
+            concurrency=self.settings.summary_concurrency,
+            timeout=self.settings.summary_timeout,
+            content_chars=self.settings.summary_content_chars,
         )
 
 

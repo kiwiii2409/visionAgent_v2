@@ -22,20 +22,30 @@ from langchain_core.prompts import ChatPromptTemplate
 from src.retrieval.file_loader import AsyncFileLoader
 import time
 
-# Prompt template for per-file summaries (was in agents/template/prompts.py)
-_HINDEX_SUMMARY_PROMPT = ChatPromptTemplate.from_template(
+# Per-file summary prompt: simple and direct, avoids confusing weak local models
+_SUMMARY_PROMPT = ChatPromptTemplate.from_template(
     "Summarize the core purpose or content of this file in 1 short sentence. "
     "File: {filepath}\n\nContent:\n{content}"
 )
 
 
 class HierarchicalIndexer:
-    def __init__(self, llm, vector_store: Chroma, summary_tree_path: str,  file_hashes_path:str, chunk_size: int = 500, chunk_overlap: int = 128):
+    def __init__(self, llm, vector_store: Chroma, summary_tree_path: str,  file_hashes_path:str,
+                 chunk_size: int = 500, chunk_overlap: int = 128,
+                 summary_llm = None, batch_size: int = 8, concurrency: int = 5,
+                 timeout: int = 30, content_chars: int = 800):
         self.llm = llm
+        self.summary_llm = summary_llm if summary_llm is not None else llm
         self.vector_store = vector_store
 
+        # batch summarization settings
+        self.batch_size = batch_size
+        self.concurrency = concurrency
+        self.timeout = timeout
+        self.content_chars = content_chars
+
         # check whether folder exists & set file to store hashes and file to store summareis
-        self.summary_tree_path = Path(summary_tree_path) 
+        self.summary_tree_path = Path(summary_tree_path)
         self.file_hashes_path = Path(file_hashes_path)
         self.summary_tree_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -150,44 +160,58 @@ class HierarchicalIndexer:
 
 
             time_start = time.time()
-            # concurrent API requests to speed up, set semaphore to num of concurrent requests allowed
             if docs_to_summarize:
                 print(f"[Indexer] Total of {len(docs_to_summarize)} modified/ new files detected")
-                file_summarizer = _HINDEX_SUMMARY_PROMPT | self.llm
-                sem = asyncio.Semaphore(10)
+
+                file_summarizer = _SUMMARY_PROMPT | self.summary_llm
+                sem = asyncio.Semaphore(self.concurrency)
 
                 async def process_doc(task_data):
+                    """Summarize a single file with timeout + retry."""
                     doc, file_path_str, _, _, _ = task_data
-                    
+
                     async with sem:
                         if len(doc.page_content) == 0:
-                            summary_result = "Empty File"
-                        else:
-                            summary_response = await file_summarizer.ainvoke({
-                                "filepath": file_path_str, 
-                                "content": doc.page_content[:1500] 
-                            })
-                            summary_result = summary_response.content
-                    
-                    return task_data, summary_result
-                
+                            return task_data, "Empty File"
+
+                        last_error = None
+                        for attempt in range(3):
+                            try:
+                                summary_response = await asyncio.wait_for(
+                                    file_summarizer.ainvoke({
+                                        "filepath": file_path_str,
+                                        "content": doc.page_content[:self.content_chars]
+                                    }),
+                                    timeout=self.timeout
+                                )
+                                return task_data, summary_response.content.strip()
+                            except asyncio.TimeoutError:
+                                last_error = f"timeout after {self.timeout}s"
+                            except Exception as e:
+                                last_error = str(e)
+
+                            if attempt < 2:
+                                await asyncio.sleep(2 ** attempt)
+
+                        # All retries exhausted — fallback to filename
+                        print(f"[Indexer] File {Path(file_path_str).name} FAILED after 3 attempts: {last_error}")
+                        return task_data, Path(file_path_str).name
 
                 tasks = [process_doc(data) for data in docs_to_summarize]
                 results = await async_tqdm.gather(*tasks, desc="Summarizing Files")
 
-                # parse reuslts amd gather in list to add all at once
+                # apply results
                 for task_data, summary_result in results:
                     doc, file_path_str, root_str, relative_path_tuple, content_hash = task_data
-                    
-                    # update hash
+
                     hash_file[file_path_str] = {"hash": content_hash, "summary": summary_result}
                     self._insert_into_tree(tree[root_str]["children"], relative_path_tuple, summary_result)
 
-                    # update metadata and split into chunks
                     doc.metadata["file_summary"] = summary_result
                     doc.metadata["type"] = "file"
                     doc.metadata["source"] = file_path_str
                     new_chunked_docs.extend(self.text_splitter.split_documents([doc]))
+
             time_elapsed = time.time() - time_start
             print(f"[Indexer] Summarized and gathered results of {len(docs_to_summarize)} files in {time_elapsed:.2f}s")
 
