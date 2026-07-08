@@ -40,7 +40,7 @@ from src.agents.vision_graph import VisionGraphBuilder
 from src.io.vision.yolo_client import AsyncYoloClient
 from src.io.vision.yolo_local import AsyncYoloParser
 from src.retrieval.skill_manager import SkillManager
-from src.utils.llm_logger import LLMLogger
+from src.utils.llm_logger import LLMLogger, wrap_llm_with_logger
 
 # tools
 from src.tools.ui_tools import get_ui_tools
@@ -180,7 +180,6 @@ class ServiceRegistry:
                 base_url=self.settings.ollama_base_url,
                 num_ctx=16384,
                 temperature=0.0,
-                callbacks=[self.llm_logger],
             )
             # Dedicated summary LLM: uses a smaller/faster model if configured, otherwise reuses main LLM
             summary_model = self.settings.ollama_summary_model_name or self.settings.ollama_model_name
@@ -189,14 +188,12 @@ class ServiceRegistry:
                 base_url=self.settings.ollama_base_url,
                 num_ctx=16384,
                 temperature=0.0,
-                callbacks=[self.llm_logger],
             ) if summary_model != self.settings.ollama_model_name else self.llm
         else:
             self.llm = ChatOpenAI(
                 model=self.settings.llm_model_name,
                 api_key=self.settings.openai_api_key,
                 base_url=self.settings.api_base_url,
-                callbacks=[self.llm_logger],
             )
             self.summary_llm = self.llm
 
@@ -206,8 +203,14 @@ class ServiceRegistry:
             api_key=self.settings.openai_api_key,
             base_url=self.settings.api_base_url,
             max_tokens=1024,
-            callbacks=[self.llm_logger],
         )
+
+        # Wrap all LLMs with the logger (intercepts ainvoke, works with with_structured_output)
+        self.llm = wrap_llm_with_logger(self.llm, self.llm_logger, self.settings.llm_model_name)
+        if self.summary_llm is not self.llm:
+            self.summary_llm = wrap_llm_with_logger(self.summary_llm, self.llm_logger,
+                                                     self.settings.ollama_summary_model_name or self.settings.llm_model_name)
+        self.vlm = wrap_llm_with_logger(self.vlm, self.llm_logger, self.settings.vlm_model_name)
 
         match self.settings.enable_preprocessing:
             case "local":
