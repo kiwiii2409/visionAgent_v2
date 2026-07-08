@@ -167,9 +167,18 @@ def _extract_prompt_text(input_) -> str:
 
 
 def _extract_response_text(result) -> str:
-    content = getattr(result, "content", "")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return json.dumps(content, ensure_ascii=False)
+    # AIMessage / BaseMessage: use .content
+    content = getattr(result, "content", None)
+    if content is not None:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return json.dumps(content, ensure_ascii=False)
+        return str(content)
+    # Pydantic model from structured output
+    if hasattr(result, "model_dump_json"):
+        try:
+            return result.model_dump_json()
+        except Exception:
+            pass
     return str(result)
