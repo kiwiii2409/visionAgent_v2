@@ -85,23 +85,27 @@ class LLMLogger:
             f.write("\n")
 
 
-def wrap_llm_with_logger(llm, logger: LLMLogger, model_name: str = ""):
+class LoggedLLM:
     """
-    Wrap a LangChain chat model so every ainvoke call is logged.
-    Intercepts ainvoke directly — works even with .with_structured_output().
+    Proxy wrapper around a LangChain chat model that intercepts ainvoke
+    to log every call. Delegates everything else to the underlying model.
+    Works with .with_structured_output() because the proxy IS the model.
     """
-    _original_ainvoke = llm.ainvoke
-    _model = model_name or getattr(llm, "model_name", "") or getattr(llm, "model", "") or type(llm).__name__
 
-    async def _logged_ainvoke(input_, config=None, **kwargs):
+    def __init__(self, llm, logger: LLMLogger, model_name: str = ""):
+        self._llm = llm
+        self._logger = logger
+        self._model = model_name or getattr(llm, "model_name", "") or getattr(llm, "model", "") or type(llm).__name__
+
+    async def ainvoke(self, input_, config=None, **kwargs):
         prompt_text = _extract_prompt_text(input_)
         prompt_chars = len(prompt_text)
         prompt_preview = prompt_text[:300] + "..." if prompt_chars > 300 else prompt_text
-        run_id = logger.log_start(_model, prompt_chars, prompt_preview)
+        run_id = self._logger.log_start(self._model, prompt_chars, prompt_preview)
 
         t0 = time.time()
         try:
-            result = await _original_ainvoke(input_, config=config, **kwargs)
+            result = await self._llm.ainvoke(input_, config=config, **kwargs)
             elapsed = time.time() - t0
 
             input_tokens = output_tokens = total_tokens = 0
@@ -116,16 +120,26 @@ def wrap_llm_with_logger(llm, logger: LLMLogger, model_name: str = ""):
 
             response_text = _extract_response_text(result)
             response_preview = response_text[:500] + "..." if len(response_text) > 500 else response_text
-            logger.log_end(run_id, elapsed, input_tokens, output_tokens, total_tokens, response_preview)
+            self._logger.log_end(run_id, elapsed, input_tokens, output_tokens, total_tokens, response_preview)
             return result
 
         except Exception as e:
             elapsed = time.time() - t0
-            logger.log_error(run_id, elapsed, str(e)[:500])
+            self._logger.log_error(run_id, elapsed, str(e)[:500])
             raise
 
-    llm.ainvoke = _logged_ainvoke
-    return llm
+    # Delegate everything else to the underlying LLM
+    def __getattr__(self, name):
+        return getattr(self._llm, name)
+
+    def with_structured_output(self, *args, **kwargs):
+        """Re-wrap after with_structured_output so logging survives."""
+        inner = self._llm.with_structured_output(*args, **kwargs)
+        return LoggedLLM(inner, self._logger, self._model)
+
+
+def wrap_llm_with_logger(llm, logger: LLMLogger, model_name: str = ""):
+    return LoggedLLM(llm, logger, model_name)
 
 
 def _extract_prompt_text(input_) -> str:
