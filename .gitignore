@@ -15,6 +15,7 @@ data/summary_tree/
 data/indexing/
 data/weights/
 data/log_images/
+data/logs/
 
 text.txt
 *.sqlite3
@@ -33,4 +34,5 @@ dist/
 *.swo
 .DS_Store
 Thumbs.db
+
 

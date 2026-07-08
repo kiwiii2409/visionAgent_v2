@@ -35,11 +35,12 @@ class SearchGraphBuilder:
 
         self.tree_path = Path(summary_tree_path)
 
-        # -- tree cache + flat file index (built once on init) --
-        self._tree_cache = None
-        self._path_to_summary = {}
-        self._name_to_paths = defaultdict(list)
-        self._build_file_index()
+        # moved down to plan_query() to avoid stale cache => tree is cached each invocation => always latest data
+        # # -- tree cache + flat file index (built once on init) --
+        # self._tree_cache = None
+        # self._path_to_summary = {}
+        # self._name_to_paths = defaultdict(list)
+        # self._build_file_index()
 
     # ── tree cache + flat file index ──────────────────────────────────
 
@@ -193,7 +194,7 @@ class SearchGraphBuilder:
 
         context = []
         tree_context = []
-        paths = set()
+        # paths = set()
         explored_subtrees = set()
         collected_summaries = state.get(
             "file_summaries", {})  
@@ -204,7 +205,7 @@ class SearchGraphBuilder:
             if source_str == "unknown_path":
                 continue
 
-            paths.add(source_str)
+            # paths.add(source_str)
 
             formatted_chunk = (
                 f"### RETRIEVED SNIPPET: {source_str}\n"
@@ -223,7 +224,7 @@ class SearchGraphBuilder:
         return {
             "context_blocks": context,
             "tree_blocks": tree_context, 
-            "known_file_paths": list(paths),
+            # "known_file_paths": list(paths), # commented out, as we check using this list, whether a file was already fully read or not
             "explored_subtrees": explored_subtrees,
             "file_summaries": collected_summaries
 
@@ -235,6 +236,7 @@ class SearchGraphBuilder:
 
         evaluator = get_evaluation_prompt() | self.llm.with_structured_output(EvaluationSchema)
         full_context = "\n\n".join(state["context_blocks"] + state.get("tree_blocks", []))
+
         input_data = {
             "query": state["query"],
             "context": full_context
@@ -336,6 +338,7 @@ class SearchGraphBuilder:
             # selects up to 3 relevant files using summaries of surrounding files
             files_response = await file_selector.ainvoke(input_data)
             read_tool = self.mcp_tools_dict.get("read_document_tool")
+            known_paths = state.get("known_file_paths", [])
             new_context = []
             new_tree_context = []
             new_paths = []
@@ -344,6 +347,9 @@ class SearchGraphBuilder:
             collected_summaries = state.get("file_summaries", {})
 
             for file_path in files_response.selected_files:
+                if file_path in known_paths:
+                    print(f"[Search Graph] Skipping {file_path}, already in context.")
+                    continue
                 try:
                     content = await read_tool.ainvoke({"path": file_path})
                     formatted_file = (
@@ -430,6 +436,15 @@ class SearchGraphBuilder:
 
     async def plan_query(self, state: SearchState):
         """Classify intent: targeted_file / structural_overview / broad_semantic."""
+
+        # clear cache and load tree once in the beginning of each invocation (moved down from __init__)
+        self._tree_cache = None
+        self._path_to_summary = {}
+        self._name_to_paths = defaultdict(list)
+
+        self._build_file_index()
+
+
         planner = get_query_plan_prompt() | self.llm.with_structured_output(QueryPlanSchema)
         result = await planner.ainvoke({"query": state["query"]})
         hints = list(result.target_hints) if result.target_hints else []
