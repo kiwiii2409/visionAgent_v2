@@ -285,15 +285,18 @@ class ServiceRegistry:
 # called separately due to async issues wtih __init__
     async def _init_mcp(self) -> None:
         print("[Registry] Starting local MCP server for filesystem")
-        self.mcp_client = MultiServerMCPClient({
-            "local_filesystem": {
-                "transport": "stdio",
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-filesystem", *self.settings.auto_index_folders]
-            }
-        })
+        # self.mcp_client = MultiServerMCPClient({
+        #     "local_filesystem": {
+        #         "transport": "stdio",
+        #         "command": "npx",
+        #         "args": ["-y", "@modelcontextprotocol/server-filesystem", *self.settings.auto_index_folders]
+        #     }
+        # })
 
-        self.mcp_tools = await self.mcp_client.get_tools()
+        # self.mcp_tools = await self.mcp_client.get_tools()
+
+        self.mcp_client = None
+        self.mcp_tools = [] 
         print(
             f"[Registry] Successfully loaded {len(self.mcp_tools)} MCP tools.")
    
@@ -331,12 +334,14 @@ class ServiceRegistry:
         if hasattr(self, 'mcp_client') and self.mcp_client is not None:
             print("[Registry] Shutting down existing MCP")
             try:
-                await self.mcp_client.disconnect() 
+                if hasattr(self.mcp_client, 'close'):
+                    await self.mcp_client.close()
             except Exception as e:
                 print(f"[Registry] Note: Error during MCP shutdown: {e}")
 
         await self._init_mcp()
         
+        self.all_tools = get_ui_tools(self.controller) + get_general_tools(self) + get_program_tools() + self.mcp_tools
         new_tools_dict = {tool.name: tool for tool in self.all_tools}
         self.search_builder.mcp_tools_dict = new_tools_dict
         self.vision_builder.mcp_tools_dict = new_tools_dict

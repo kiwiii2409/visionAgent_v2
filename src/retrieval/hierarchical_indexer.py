@@ -229,7 +229,7 @@ class HierarchicalIndexer:
                 if new_chunked_docs:
                     print(f"[Indexer] Saving {len(new_chunked_docs)} embeddings to chroma")
                     
-                    batch_size = 50
+                    batch_size = 25
                     batches = [
                         new_chunked_docs[i : i + batch_size] 
                         for i in range(0, len(new_chunked_docs), batch_size)

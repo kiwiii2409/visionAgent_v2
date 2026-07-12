@@ -182,7 +182,7 @@ class SearchGraphBuilder:
             state["query"],
             k=20,
             fetch_k=50,
-            lambda_mult=0.5
+            lambda_mult=0.2
         )
 
         pairs = [(state["query"], doc.page_content) for doc in docs]
@@ -410,10 +410,15 @@ class SearchGraphBuilder:
 
             if path_str.startswith("http://") or path_str.startswith("https://"):
                 web_meta = web_summaries.get(path_str, {})
+
+                snippet = web_meta.get("snippet", "No Snippet")
+                if len(snippet) > 500:
+                    snippet = snippet[:500] + "..."
+
                 enriched_sources.append({
                     "name": web_meta.get("title", path_str), 
                     "path": path_str,
-                    "summary": web_meta.get("snippet", "Web search result.")
+                    "summary": snippet
                 })
             else:
                 file_name = Path(path_str).name

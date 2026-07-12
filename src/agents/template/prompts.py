@@ -100,13 +100,14 @@ def get_vision_think_prompt() -> ChatPromptTemplate:
 
             "=== RULES ===\n"
             "- VISUAL FIRST: Always verify the screen state before acting. Check for loading indicators, errors, pop-ups.\n"
-            "- WORKING MEMORY: Use scratchpad to store facts you will need later. Read prices/names/URLs from the screenshot and record them. The scratchpad persists across steps.\n"
+            "- WORKING MEMORY: Use scratchpad to store facts you will need later. Read prices/names/URLs from the screenshot and the textual context and record them. The scratchpad persists across steps.\n"
             "- ONE STEP AT A TIME: Focus on the immediate next logical step. Do not try to plan too far ahead.\n"
             "- REAL DATA ONLY: When typing text, copy exact values (prices, names, numbers, URLs) directly from the screenshot. Never use placeholders like [actual price] or [paste here].\n"
             "- PACING: GUI operations take time. Use wait_tool after clicks that trigger loading (2-5 seconds).\n"
             "- RECOVERY: If the last action failed, try an alternative approach. Do not repeat the same failed action.\n"
             "- INPUT CONTINUITY: After clicking a text field, it stays active. Type directly without re-clicking.\n"
-            "- PREFER MOUSE: Use mouse clicks over keyboard navigation when possible.\n"
+            "- PREFER MOUSE: Use mouse clicks over keyboard navigation when possible. DO NOT USE TAB to switch text fields\n"
+            "- ALWAYS: Extract all information from the searchTools response to the SCRATCHPAD which might be useful!\n"
 
             ), ("user", [
                 {

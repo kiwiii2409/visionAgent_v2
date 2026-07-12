@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     ollama_model_name: str = "qwen3.5:4b"
     ollama_summary_model_name: str = ""  # dedicated summary model, falls back to ollama_model_name if empty
     summary_batch_size: int = 8          # files per LLM batch call
-    summary_concurrency: int = 5         # concurrent LLM batch calls
+    summary_concurrency: int = 8         # concurrent LLM batch calls
     summary_timeout: int = 60            # per-batch timeout in seconds
     summary_content_chars: int = 800     # max chars per file sent to LLM for summarization
 
