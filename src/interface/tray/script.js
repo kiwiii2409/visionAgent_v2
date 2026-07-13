@@ -7,11 +7,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsBtn = document.getElementById('settingsBtn');
     const actionBtn = document.getElementById('actionBtn');
     const indexBtn = document.getElementById('indexBtn');
+    const rebuildBtn = document.getElementById('rebuildBtn');
+    const websearchToggle = document.getElementById('websearchToggle');
 
     // Event Listeners
     settingsBtn.addEventListener('click', toggleSettings);
     actionBtn.addEventListener('click', handleAction);
     indexBtn.addEventListener('click', indexFolder);
+    if (rebuildBtn) rebuildBtn.addEventListener('click', rebuildIndex);
+
+    // Initialise Indexed Folders List
+    updateFoldersList();
+
+    // Segmented Toggle Logic
+    if (websearchToggle) {
+        websearchToggle.querySelectorAll("button").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const val = btn.dataset.val;
+                websearchToggle.setAttribute("data-value", val);
+                websearchToggle.querySelectorAll("button").forEach(b => {
+                    if (b.dataset.val === val) b.classList.add("active");
+                    else b.classList.remove("active");
+                });
+            });
+        });
+    }
 
     promptInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -47,9 +67,13 @@ function setButtonState(executing) {
     if (executing) {
         btn.classList.add('stop-mode');
         icon.className = 'fas fa-square';
+        // Changes title to trigger the Python PySide6 Active Icon state
+        document.title = "Vision Agent Tray - Active";
     } else {
         btn.classList.remove('stop-mode');
         icon.className = 'fas fa-paper-plane';
+        // Reverts title to return the icon back to normal
+        document.title = "Vision Agent Tray";
     }
 }
 
@@ -84,7 +108,8 @@ async function sendMessage() {
     setButtonState(true);
 
     const websearchToggle = document.getElementById('websearchToggle');
-    const useWebsearch = websearchToggle ? websearchToggle.checked : false;
+    // Read from the dataset attribute updated by the segmented toggle
+    const useWebsearch = websearchToggle ? websearchToggle.dataset.value === "true" : false;
 
     const userBubble = createMessageBubble('user');
     userBubble.textContent = text;
@@ -152,7 +177,12 @@ async function sendMessage() {
                     else if (data.type === "msg") {
                         let htmlContent = marked.parse(data.content);
                         if (data.sources && data.sources.length > 0) {
-                            const sourcesList = data.sources.map(src => `<li><code>${src}</code></li>`).join('');
+                            const sourcesList = data.sources.map(doc => {
+                                // Extract the path whether the backend sends a string or an object
+                                const pathStr = typeof doc === 'string' ? doc : (doc.path || doc.source || 'Unknown source');
+                                return `<li><code>${pathStr}</code></li>`;
+                            }).join('');
+                            
                             htmlContent += `
                             <details class="agent-sources">
                                 <summary><i class="fas fa-file-alt"></i> Sources</summary>
@@ -212,6 +242,9 @@ async function indexFolder() {
         if (res.ok) {
             folderInput.placeholder = `Indexed: ${path}`;
             folderInput.classList.add('input-success');
+            
+            updateFoldersList(); // Refresh visual list instantly
+            
             setTimeout(() => {
                 folderInput.classList.remove('input-success');
                 folderInput.placeholder = originalPlaceholder;
@@ -236,5 +269,56 @@ async function indexFolder() {
         }, 4000);
     } finally {
         folderInput.disabled = false;
+    }
+}
+
+async function updateFoldersList() {
+    try {
+        const res = await fetch('/api/folders');
+        const data = await res.json();
+        const folders = data.folders || [];
+        
+        const renderHTML = folders.map(f => `<li><i class="fas fa-folder"></i> ${f}</li>`).join('');
+        const list = document.getElementById('foldersList');
+        if (list) list.innerHTML = renderHTML;
+    } catch (e) {
+        console.error("Failed to fetch folders", e);
+    }
+}
+
+async function rebuildIndex() {
+    const btn = document.getElementById('rebuildBtn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rebuilding...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch("/api/rebuild", { method: "POST" });
+        if (response.ok) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Rebuilt';
+            btn.style.color = "#22c55e"; // Success green in tray style context
+            btn.style.borderColor = "#22c55e";
+            updateFoldersList();
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.color = "";
+                btn.style.borderColor = "";
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error("Rebuild failed");
+        }
+    } catch (error) {
+        btn.innerHTML = '<i class="fas fa-times"></i> Error';
+        btn.style.color = "#ef4444";
+        btn.style.borderColor = "#ef4444";
+
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.color = "";
+            btn.style.borderColor = "";
+            btn.disabled = false;
+        }, 3000);
     }
 }

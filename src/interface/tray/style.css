@@ -93,8 +93,8 @@ body, html {
   background-color: var(--panel-bg);
   border-bottom: 1px solid var(--border-color);
   padding: 20px;
-  max-height: 300px;
-  overflow: hidden;
+  max-height: 450px; /* Increased from 300px */
+  overflow-y: auto; /* Allow scrolling if list gets too long */
   transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
   opacity: 1;
 }
@@ -297,3 +297,115 @@ textarea::placeholder { color: var(--text-muted); }
 .text-error { color: #ef4444; }
 .text-warning { color: #f59e0b; }
 .list-unstyled { padding-left: 12px; font-size: 0.8rem; list-style: none; opacity: 0.8; }
+
+
+/* --- Segmented Toggle (Two-Button Design) --- */
+.segmented-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  width: 120px;
+  height: 30px;
+  background-color: var(--input-bg);
+}
+.segmented-toggle button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.segmented-toggle button.active {
+  background-color: var(--primary);
+  color: #fff;
+}
+.segmented-toggle button:first-child {
+  border-right: 1px solid var(--border-color);
+}
+
+/* --- Indexed Folders List --- */
+.indexed-folders-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.indexed-folders-list li {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  word-break: break-all;
+}
+.indexed-folders-list li i {
+  color: var(--text-muted);
+}
+
+/* --- Rebuild Button --- */
+.rebuild-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rebuild-btn:hover {
+  background-color: #ef4444; /* Matches Tray Error Red */
+  color: white;
+  border-color: #ef4444;
+}
+
+/* --- Document Items (Sources) --- */
+.source-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-result {
+  padding: 12px;
+  background-color: var(--chat-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.doc-path {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.doc-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+
+.doc-summary {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}

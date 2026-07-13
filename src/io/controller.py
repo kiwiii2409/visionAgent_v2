@@ -34,7 +34,7 @@ class IOController:
 
         await asyncio.to_thread(pyautogui.scroll, amount)
 
-    async def write(self, text: str, interval: float = 0.02) -> None:
+    async def write(self, text: str, interval: float = 0.2) -> None:
         """Type text with a delay between keystrokes"""
         await asyncio.to_thread(pyautogui.write, text, interval=interval)
 

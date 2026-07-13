@@ -21,6 +21,15 @@
       </header>
 
       <div id="settingsPanel" class="settings-panel hidden">
+        
+        <div class="setting-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <label style="margin: 0;">Use Websearch</label>
+          <div class="segmented-toggle" id="websearchToggle" data-value="false">
+              <button class="toggle-yes" data-val="true">Yes</button>
+              <button class="toggle-no active" data-val="false">No</button>
+          </div>
+        </div>
+
         <div class="setting-group">
           <label for="folderInput">Index New Folder</label>
           <div class="input-group">
@@ -31,19 +40,19 @@
             />
             <button id="indexBtn">Index</button>
           </div>
-          <p id="indexStatus" class="status-msg"></p>
+          <p id="indexStatus" class="status-msg" style="display:none;"></p>
         </div>
-        <div id="settingsPanel" class="hidden">
-          <div class="setting-item">
-            <label
-              for="websearchToggle"
-              class="flex items-center cursor-pointer"
-            >
-              <input type="checkbox" id="websearchToggle" class="mr-2" />
-              <span>Enable Web Search</span>
-            </label>
+        
+        <div class="setting-group spaced-group" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <label style="margin: 0;">Indexed Folders</label>
+              <button id="rebuildBtn" class="rebuild-btn">
+                  <i class="fas fa-sync-alt"></i> Rebuild
+              </button>
           </div>
+          <ul id="foldersList" class="indexed-folders-list"></ul>
         </div>
+
       </div>
 
       <main class="chat-main">
