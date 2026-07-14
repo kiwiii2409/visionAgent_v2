@@ -14,8 +14,8 @@ from typing import Literal
 from PIL import Image
 from langgraph.graph import StateGraph, START, END
 
-from src.agents.template.schema import VisionState, VisionActionSchema
-from src.agents.template.prompts import get_vision_think_prompt
+from src.agents.template.schema import VisionState, VisionActionSchema, SearchSummarySchema
+from src.agents.template.prompts import get_vision_think_prompt, get_search_summarizer_prompt
 
 
 class VisionGraphBuilder:
@@ -24,6 +24,12 @@ class VisionGraphBuilder:
             VisionActionSchema,
             method="function_calling"
         )
+
+        self.search_summarizer = get_search_summarizer_prompt() | vlm.with_structured_output(
+            SearchSummarySchema,
+            method="function_calling"
+        )
+
         self.preprocessor = preprocessor if preprocessor else None
         self.skill_manager = skill_manager
         self.mcp_tools_dict = {tool.name: tool for tool in mcp_tools}
@@ -125,6 +131,8 @@ class VisionGraphBuilder:
     # ------------------------------------------------------------------
     async def execute_action(self, state: VisionState) -> dict:
         plan = state.get("current_plan")
+        scratchpad = state.get("scratchpad") or ""
+
         if not plan or not plan.get("actions"):
             return {"iterations": state.get("iterations", 0) + 1}
 
@@ -136,11 +144,12 @@ class VisionGraphBuilder:
             tool_name = act["tool_name"]
             tool_args = act["tool_args"]
 
-            # Resolve element_id → pixel coordinates
+            # Resolve element_id to pixel coordinates
             if "element_id" in tool_args and state.get("coordinate_dict"):
                 elem_id = str(tool_args["element_id"])
                 coord_dict = state["coordinate_dict"]
                 if elem_id in coord_dict:
+                    
                     bbox = coord_dict[elem_id]
                     tool_args["x"] = int(bbox[0])
                     tool_args["y"] = int(bbox[1])
@@ -152,6 +161,7 @@ class VisionGraphBuilder:
                         "tool_args": tool_args,
                         "result": f"[Vision] Error: ID {elem_id} not found."
                     })
+                    print(f"[Vision] Error translating element_id to pixel!")
                     break
 
             tool = self.mcp_tools_dict.get(tool_name)
@@ -160,7 +170,18 @@ class VisionGraphBuilder:
                     print(f"[Vision] Executing: {tool_name} with {tool_args}")
                     res = await tool.ainvoke(tool_args)
                     await asyncio.sleep(0.5)
-                    result_str = f"Success ({tool_name}): {res}"
+
+                    if "search" in tool_name.lower() or tool_name == "read_document_tool":
+                        print(f"[Vision] Summarizing search results for {tool_name}")
+                        summary_obj = await self.search_summarizer.ainvoke({
+                            "query": str(tool_args),
+                            "content": str(res)
+                        })
+                        scratchpad += f"\n\n[Search Results for {tool_args}]:\n{summary_obj.summary_text}\n"
+                        result_str = f"Success ({tool_name}): Results summarized and saved to scratchpad."
+                    else:
+                        result_str = f"Success ({tool_name}): {res}"
+
                 except Exception as e:
                     result_str = f"Error ({tool_name}): {e}"
                     print(f"[Vision] Execute error on {tool_name}: {e}")
@@ -183,6 +204,7 @@ class VisionGraphBuilder:
             "action_history": new_history_entries,
             "current_plan": None,
             "iterations": state.get("iterations", 0) + 1,
+            "scratchpad": scratchpad, 
         }
 
     # ------------------------------------------------------------------

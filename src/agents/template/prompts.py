@@ -107,7 +107,7 @@ def get_vision_think_prompt() -> ChatPromptTemplate:
             "- RECOVERY: If the last action failed, try an alternative approach. Do not repeat the same failed action.\n"
             "- INPUT CONTINUITY: After clicking a text field, it stays active. Type directly without re-clicking.\n"
             "- PREFER MOUSE: Use mouse clicks over keyboard navigation when possible. DO NOT USE TAB to switch text fields\n"
-            "- ALWAYS: Extract all information from the searchTools response to the SCRATCHPAD which might be useful!\n"
+
 
             ), ("user", [
                 {

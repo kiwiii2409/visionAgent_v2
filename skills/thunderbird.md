@@ -12,7 +12,7 @@ tags: [thunderbird, email, mail, send, compose]
    - **Subject:** — click on the subject field and make a subject if not mentioned
    - **Body:** — click on the main editing area, then type the message content
 3. Click the **"Send"** button (usually in the top-left toolbar) to send the email 
-4. You are DONE 
+4. Once the compose-window disappears, you are DONE. Do not check for more visual confirmation!
 
 ## Important Notes
 

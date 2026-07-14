@@ -85,7 +85,7 @@ class ServiceRegistry:
         if self.settings.auto_index_folders:
             await self.document_h_indexer.build_index(self.settings.auto_index_folders)
             print(f"[Registry] Successfully indexed {len(self.settings.auto_index_folders)} folders")
-        self.indexing_task = asyncio.create_task(self._background_indexer(interval_minutes=5)) # runs automatic indexing every 5 mins
+        self.indexing_task = asyncio.create_task(self._background_indexer(interval_minutes=10)) # runs automatic indexing every 10 mins
 
         self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 

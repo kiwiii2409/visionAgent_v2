@@ -16,7 +16,7 @@ class IOController:
         # lazy import to ensure virtual display is set up first
         global pyautogui
         import pyautogui  
-        pyautogui.FAILSAFE = True
+        pyautogui.FAILSAFE = False
 
     # TODO change duration to 0.5. high value useful for testing
     async def move_mouse(self, x: int, y: int, duration: float = 0.5) -> None:
@@ -34,7 +34,7 @@ class IOController:
 
         await asyncio.to_thread(pyautogui.scroll, amount)
 
-    async def write(self, text: str, interval: float = 0.2) -> None:
+    async def write(self, text: str, interval: float = 0.05) -> None:
         """Type text with a delay between keystrokes"""
         await asyncio.to_thread(pyautogui.write, text, interval=interval)
 

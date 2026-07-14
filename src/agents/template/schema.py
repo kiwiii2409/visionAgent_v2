@@ -74,7 +74,10 @@ class VisionActionSchema(BaseModel):
     actions: List[ToolCallSchema] = Field(default_factory=list, description="Next tools to execute. Empty if done=True. Max 4.")
     scratchpad: str | None = Field(default=None, description="Important facts to remember across steps (prices, names, URLs, emails). Write key=value pairs like 'BTC=53195.36 EUR'. This persists and will be shown to you next iteration.")
 
-
+class SearchSummarySchema(BaseModel):
+    summary_text: str = Field(
+        description="A concise, bulleted summary extracting ONLY the most critical facts, file paths, precise answers, or links from the search results. Do not include conversational filler."
+    )
 
 
 class VisionState(TypedDict):
