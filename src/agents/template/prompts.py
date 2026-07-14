@@ -132,3 +132,19 @@ def get_task_routing_prompt() -> ChatPromptTemplate:
         "2. 'task': The user wants the agent to take physical action, such as clicking, typing, looking at the screen, or opening an application. (Requires system manipulation).\n\n"
         "Query: {query}"
     )
+
+
+def get_search_summarizer_prompt() -> ChatPromptTemplate:
+    """Prompt to summarize search tool outputs to prevent context bloating."""
+    return ChatPromptTemplate.from_template(
+        "You are an expert summarization assistant for an autonomous desktop agent.\n"
+        "The agent just executed a search tool using the query: {query}\n"
+        "The raw search results are below:\n"
+        "-----\n"
+        "{content}\n"
+        "-----\n"
+        "Your task is to extract ONLY the most critical facts, file paths, precise answers, or links needed by the agent. "
+        "Condense this to an absolute minimum (bullet points). "
+        "Focus on information required to answer the query AND filepaths!"
+        "Do NOT include conversational filler. Do NOT repeat the search parameters. Just provide the extracted facts."
+    )
