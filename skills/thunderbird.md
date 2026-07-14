@@ -10,7 +10,7 @@ tags: [thunderbird, email, mail, send, compose]
 2. In the compose window, fill in:
    - **To:** — recipient email address (click the To field first, then type)
    - **Subject:** — click on the subject field and make a subject if not mentioned
-   - **Body:** — click on the main editing area, then type the message content
+   - **Body:** — click on the main editing area, then type the email body.
 3. Click the **"Send"** button (usually in the top-left toolbar) to send the email 
 4. Once the compose-window disappears, you are DONE. Do not check for more visual confirmation!
 
@@ -21,3 +21,4 @@ tags: [thunderbird, email, mail, send, compose]
 - If you see "Contact" or "Address Book", you are in the wrong place — look for the Write/New Message button
 - When the email is sent successfully, Thunderbird may briefly show a "Sending message" dialog, then the compose window closes
 - Navigate using the mouse, not keyboard shortcuts etc.
+- Write natural sounding friendly emails! Include formalities like greetings. Do NOT simply list the information without content
