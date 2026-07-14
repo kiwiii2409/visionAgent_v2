@@ -1,5 +1,5 @@
 ---
-tags: [thunderbird, email, mail, send, compose]
+tags: [thunderbird, email, mail, send, write, compose]
 ---
 
 # Thunderbird Email Client
@@ -19,6 +19,5 @@ tags: [thunderbird, email, mail, send, compose]
 - Do NOT edit contacts in the Address Book when you need to send an email — that opens a contact editor, not an email compose window
 - The Write/New Message button opens a fresh compose window where you can enter recipient, subject, and body
 - If you see "Contact" or "Address Book", you are in the wrong place — look for the Write/New Message button
-- When the email is sent successfully, Thunderbird may briefly show a "Sending message" dialog, then the compose window closes
-- Navigate using the mouse, not keyboard shortcuts etc.
-- Write natural sounding friendly emails! Include formalities like greetings. Do NOT simply list the information without content
+- Navigate using the mouse, NEVER use keyboard shortcuts etc.
+- Always write natural sounding friendly emails! Never just paste scratchpad information into the email without providing context!

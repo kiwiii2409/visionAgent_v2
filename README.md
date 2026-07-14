@@ -1,89 +1,82 @@
-## How to run:
-#### Setup for OmniParser/ YOLO:
-<!-- 1. start VPN in separate Terminal: `sudo openvpn --config vpn-air-standard.ovpn` (download config here: https://vpn.ito.cit.tum.de/)  -->
-2. start OmniParser or YOLO on Server (run `python3 gradio_demo.py` or `python3 yolo_server.py` in `/data1/visionAgent/OmniParser/`)
-3. use port-forwarding, e.g. `ssh -i ~/.ssh/uni_key -L 7861:localhost:7860 manipulation_agent@131.159.60.57`
-- new local YOLO option available (weights taken from OmniParser_v2)
-  - download the weights:
-    - `mkdir -p data/weights/yolo`  
-    - `for f in train_args.yaml model.pt model.yaml; do curl -L "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/$f" -o "data/weights yolo/$f"; done`
+# Vision & Search Agent
 
-#### Note: visionAgent operates is currently slowed down on purpose (high wait times before screenshots)
+## General Idea
+- Local interface (website or tray) with chat, virtual screen streaming, and system settings (e.g., adding folders to the indexed knowledge base).
+- The system features two separate agent graphs with automatic routing of user queries:
+  - **searchAgent**: LLM-based agent handling pure knowledge retrieval. Performs no system manipulation ("Google for local system").
+  - **visionAgent**: VLM + OmniParser agent that handles tasks (writing emails, creating files) and interacts with the OS in a human-like way via tools.
 
-### Mode 1: Agent operates on your screen
-1. in `settings.py`: `"local", "tray", "False"`
-2. run `python src/main.py`
-3. a small desktop tray icon should pop up, double click to open
- 
-### Mode 2: Agent operates on virtual screen in the backgroudn
-1. in `settings.py`: `"virtual", "web", "True"`
-2. run `websockify 6080 localhost:5900` in separate terminal
-3. run `python src/main.py`
-4. visit `http://127.0.0.1:8000/` to monitor the virtual display
+---
+
+## Configuration & Setup
+Settings can be modified in `src/config/settings.py` or overwritten by creating a `.env` file in the project root.
+
+By default, the system uses `gpt-5.4-mini` for LLM/VLM tasks and `BAAI/bge-small-en-v1.5` for embeddings.
+
+### OmniParser / YOLO Setup (Local) (Default)
+- A local YOLO option is available using weights from OmniParser_v2. Set `enable_preprocessing = "local"` in settings.
+- Download the weights before running:
+  - `mkdir -p data/weights/yolo`
+  - `for f in train_args.yaml model.pt model.yaml; do curl -L "https://huggingface.co/microsoft/OmniParser-v2.0/resolve/main/icon_detect/$f" -o "data/weights/yolo/$f"; done`
+
+### OmniParser / YOLO Setup (Uni Server)
+- Start OmniParser or YOLO on the server (run `python3 gradio_demo.py` or `python3 yolo_server.py` in `/data1/visionAgent/OmniParser/`).
+- Use port-forwarding to connect locally, e.g.:
+  `ssh -i ~/.ssh/uni_key -L 7861:localhost:7860 manipulation_agent@131.159.60.57`
+- Set `enable_preprocessing = "server"` in settings.
+
+### Local Search / LLM Setup (Optional)
+- You can enable local models instead of OpenAI by setting `enable_local_search = True` in your `.env` or settings.
+- The system defaults to Ollama running at `http://127.0.0.1:11434` with the `qwen3.5:4b` model.
+
+---
+
+## How to Run (Modes)
+Task and Search Agent are supported in both modes. Mode 1 offers separate interfaces for search and task, while Mode 2 offers a shared interface with automatic routing.
 
 
-## Idea:
-- Local website with chat, stream of virtual screen, access to settings/ ability to e.g. add folders to indexed knowledgebase
-- two agents implemented as separate graphs, automatic routing of queries to one of both: 
-  - **searchAgent**: LLM-based agent, handles pure knowledge retrieval, no manipulation of system ("Google for local system")
-  - **visionAgent**: VLM + Omniparser agent, handles all other tasks (writing emails, creating files), interacts with system using tools in a human-like way
+### Mode 1: Agent operates on a virtual screen in the background
+1. In `settings.py` or `.env`, set the following:
+   - `display_mode = "virtual"`
+   - `ui_mode = "web"`
+   - `enable_vnc = True`
+2. Run `websockify 6080 localhost:5900` in a separate terminal. This allows you to monitor the virtual display.
+3. Run `python src/main.py`.
+4. Visit `http://127.0.0.1:8000/` in your browser to chat and monitor the virtual display.
+
+### Mode 2: Agent operates on your main screen
+1. In `settings.py` or `.env`, set the following:
+   - `display_mode = "local"`
+   - `ui_mode = "tray"`
+   - `enable_vnc = False`
+2. Run `python src/main.py`.
+3. A small desktop tray icon should pop up. Double-click it to open the interface.
 
 
-## Issues 
-- MODE 2: if e.g. vscode is opened on the main display, instructing the agent to "open vscode" will open another instance on the main display
-- VisionAgent struggles if yolo doesnt recognize bounding box => currenlty: use yolo bb as primary and predict coordinates as fallback
-- "race condition" like behaviour, where sometimes tool-calls with the same goals are executed shortly after each other (slow down kind of fixes it!)
-- Occasional random steps/ non-sense tool-calls (e.g. clicking bounding box marking nothing) => maybe try with more capable model (> gpt 5.4 mini) to see whether it's vlm issue
 
+---
+
+## Current Issues 
+- **YOLO Bounding Boxes:** visionAgent struggles if YOLO doesn't recognize a bounding box. 
+  - **Solution**: Use YOLO bounding boxes as primary and predict coordinates as a fallback.*
+- **Race Conditions:** Tool-calls with the same goals are sometimes executed too quickly in succession. 
+  - **Solution:** The intentional slowdown currently acts as a temporary fix
+- **Hallucinated Actions:** Occasional random steps or nonsense tool-calls occur (e.g., clicking a bounding box that marks nothing)
+- **Virtual Screen bleed:** In Mode 2, if an app like VSCode is already open on the main display, instructing the agent to "open vscode" will open another instance on the main display rather than the virtual one.
+---
 
 ## Missing & Ideas
-#### Website
-- change settings: since we separated Task and Search they should have individual settings. 
-  - Search Settings: add new folders, (maybe) websearch active or not, 
-  - Task Settings: (?) permissions? am i allowed to delete? etc. idk
+
+#### Agents & Tools
+- **searchAgent:**
+  - Improve context filtering to increase token efficiency.
+
+- **visionAgent:**
+  - Improve reliability and speed.
+
+- **General:**
+  - Voice input.
 
 #### Memory & RAG
-
-#### Agents
-- Additional tools for **searchAgent** to apply to context (e.g. count files, get system information, ...)
-  - added MMR already, but maybe add keyword search separately? 
-- better context filtering for search Agent
-- searchAgent as tool for TaskAgent, s.t. taskagent (given an absolute path) can e.g. navigate to file and send as attachment
-- (maybe) Voice Input, Websearch tool
-- Human-Intervention for TaksAgent s.t. it can wait for user password (maybe implement as additional tool)
-
-##### Less Important
-- Memory-features:
-  - Shared short-term memory between agents (should we limit that so save tokens?)
-  - (maybe) retrieve past (un-) successful high-level task-plans for visionAgent to serve as pos/neg examples
-    - requires: user has to be able to "rate" success in the UI after visionAgent finishes a task
-- (maybe) additional tools for task execution (closing program, creating/ deleting files) => might require "safe" mode s.t. operations are just logged without being 
-- (maybe) Multiple chats, persistent chats
-
-
-
-## Already implemented
-- **searchAgent** with following flow: 
-  - Query -> RAG to get chunks + summaries of surrounding files -> LLM decides: enough information? 
-    - if yes: respond
-    - if no: select up to 3 surrounding files to fully read and append as context -> respond
-- basic tools for retrieval, ui interaction, opening program (currently not used by searchAgent)
-- simple web interface to communicate with agent
-- hierarchical indexing to allow agent to retrieve additional infromations besides chunks from RAG
-- Automatic indexing of only changes in folders using hashing
-  - avoids whole reindexing on each startup (`_requires_reindexing`)
-  - avoid storing duplicates of the same chunk when reindexing
-- Clean up website and agent responses
-  - remove emojis from responses
-  - make website pretty
-  - agent-thinking-bubble in UI doesn't reliably display all steps
-- Allow user to change settings on Website
-- visionAgent using VLM + Omniparser
-
-
-
-
-
-
-
+- Retrieve past (un)successful high-level task-plans for visionAgent to serve as positive/negative examples (requires a UI feature for users to "rate" task success).
 
